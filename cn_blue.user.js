@@ -1,3 +1,22 @@
+// ==UserScript==
+// @name         CloudyNights Blue Theme
+// @namespace    https://github.com/chvvkumar/cloudynights_customization
+// @version      1.0.0
+// @description  Modern blue dark theme for CloudyNights forum with improved readability and aesthetics
+// @author       chvvkumar
+// @match        https://www.cloudynights.com/*
+// @match        https://cloudynights.com/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=cloudynights.com
+// @grant        GM_addStyle
+// @run-at       document-start
+// @updateURL    https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/refs/heads/main/cloudynights-blue-theme.user.js
+// @downloadURL  https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/refs/heads/main/cloudynights-blue-theme.user.js
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const css = `
 /* ========================================
 COLOR VARIABLES & ROOT SETTINGS
 ======================================== */
@@ -627,3 +646,15 @@ CUSTOM LAYOUT (PERMANENT HIDE/FULL WIDTH)
 /* ========================================
 END OF CUSTOM LAYOUT (PERMANENT HIDE/FULL WIDTH)
 ======================================== */
+    `;
+
+    // Inject the CSS using GM_addStyle
+    if (typeof GM_addStyle !== 'undefined') {
+        GM_addStyle(css);
+    } else {
+        // Fallback for browsers that don't support GM_addStyle
+        const style = document.createElement('style');
+        style.textContent = css;
+        (document.head || document.documentElement).appendChild(style);
+    }
+})();

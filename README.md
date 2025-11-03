@@ -1,1 +1,1 @@
-# cloudynights_customization
+# Tempermonkey scrpts for CloudyNights forums

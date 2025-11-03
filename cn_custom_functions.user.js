@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      2.3
 // @description  Adds post permalinks, collapsible stream header, and collapsible sidebar for Cloudy Nights
-// @author       You
+// @author       chvvkumar
 // @match        https://www.cloudynights.com/*
 // @match        https://*.cloudynights.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=cloudynights.com
@@ -531,4 +531,3 @@
     initializeFeatures();
 
 })();
-

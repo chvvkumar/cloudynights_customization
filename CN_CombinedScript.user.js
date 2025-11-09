@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle
 // @namespace    http://tampermonkey.net/
-// @version      4.4
+// @version      4.5
 // @description  Applies a Material Dark/Light/Dim/Material-Dark theme with toggle, makes the right sidebar collapsible, expands main content, and adds permalinks. Adds collapsible main content headers.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
@@ -274,8 +274,31 @@ body[data-theme] .ipsType_medium {color: var(--text-primary) !important;}
 body[data-theme] a {color: var(--accent-primary) !important;text-decoration: none !important;transition: all 0.2s ease !important;}
 body[data-theme] a:hover {color: var(--accent-secondary) !important;text-decoration: underline !important;}
 body[data-theme] .ipsButton {border-radius: var(--radius-sm) !important;box-shadow: var(--shadow-sm) !important;}
-body[data-theme] .ipsButton_primary, body[data-theme] .ipsButton_important {background: var(--accent-primary) !important;color: #ffffff !important;}
+
+/* --- Base Button Style --- */
+/* Kept the background tied to the accent, and set default text color to white (which works for dim/material-dark). */
+body[data-theme] .ipsButton_primary, body[data-theme] .ipsButton_important {
+    background: var(--accent-primary) !important;
+    color: #ffffff;
+}
 body[data-theme] .ipsButton_primary:hover, body[data-theme] .ipsButton_important:hover {background: var(--accent-secondary) !important;box-shadow: var(--shadow-md) !important;transform: translateY(-1px) !important;}
+
+/* --- Button Text Contrast FIX (Targeted) --- */
+/* ONLY apply dark text color where the background is light (i.e., 'dark' theme's light accent
+   and 'light' theme's dark blue accent where dark text is preferred/safer).
+   This avoids incorrectly setting dark text on the dim/material-dark themes. */
+[data-theme="dark"] .ipsButton_primary, [data-theme="dark"] .ipsButton_important,
+[data-theme="light"] .ipsButton_primary, [data-theme="light"] .ipsButton_important {
+    color: #263238 !important;
+}
+
+/* --- Ensure Dim and Material Dark explicitly use white text, even if it was overridden previously --- */
+[data-theme="dim"] .ipsButton_primary, [data-theme="dim"] .ipsButton_important,
+[data-theme="material-dark"] .ipsButton_primary, [data-theme="material-dark"] .ipsButton_important {
+    color: #ffffff !important;
+}
+/* ------------------------------------- */
+
 body[data-theme] .ipsButton_alternate, body[data-theme] .ipsButton_light {background-color: var(--tertiary-bg) !important;color: var(--text-primary) !important;border: 1px solid var(--border-light) !important;box-shadow: none !important;}
 body[data-theme] .ipsButton_alternate:hover, body[data-theme] .ipsButton_light:hover {background-color: var(--border-light) !important;border-color: var(--accent-primary) !important;transform: translateY(-1px) !important;box-shadow: var(--shadow-sm) !important;}
 body[data-theme] .ipsButton_veryLight {background-color: var(--tertiary-bg) !important;color: var(--accent-primary) !important;border: 1px solid var(--border-color) !important;}

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle
 // @namespace    http://tampermonkey.net/
-// @version      3.9
-// @description  Applies a Material Dark/Light/Dim theme with toggle, makes the right sidebar collapsible, expands main content, and adds permalinks. Adds collapsible main content headers.
+// @version      4.4
+// @description  Applies a Material Dark/Light/Dim/Material-Dark theme with toggle, makes the right sidebar collapsible, expands main content, and adds permalinks. Adds collapsible main content headers.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
 // @grant        GM_addStyle
@@ -46,6 +46,37 @@
     --success: #10b981;
     --warning: #f59e0b;
     --error: #ef4444;
+}
+
+/* ========================================
+    THEME VARIABLES - MATERIAL DARK MODE (Standard Dark Grey + Indigo Accent)
+    Primary Accent: #3D5AFE (Indigo A400) for excellent contrast
+======================================== */
+[data-theme="material-dark"] {
+    /* Backgrounds: Standard Material Dark Greys */
+    --primary-bg: #121212; /* Page BG (Darkest) */
+    --secondary-bg: #1E1E1E; /* Surfaces/Cards (Darker grey) */
+    --tertiary-bg: #2C2C2C; /* Posts/Items (Slightly lighter grey for post separation) */
+
+    /* Accent: Bright Indigo for visibility */
+    --accent-primary: #3D5AFE; /* Indigo Accent 3 (Primary action color) - High contrast */
+    --accent-secondary: #8C9EFF; /* Indigo Accent 1 (Lighter for hover/secondary links) */
+
+    /* Text: High contrast */
+    --text-primary: #FFFFFF;
+    --text-secondary: #B0B0B0;
+    --text-muted: #888888;
+
+    /* Borders & Shadows */
+    --border-color: #383838;
+    --border-light: #505050;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.8);
+
+    /* Utility */
+    --success: #66BB6A; /* Green A400 */
+    --warning: #FFCA28; /* Amber A400 */
+    --error: #EF5350; /* Red A400 */
 }
 
 /* ========================================
@@ -115,6 +146,22 @@
     --radius-lg: 12px;
 }
 
+/* ========================================
+   REDUCED BUTTON HEIGHT
+======================================== */
+.ipsButton_important,
+.ipsButton_medium,
+.ipsButton_primary,
+.ipsButton {
+    padding: 6px 12px !important;
+    line-height: 1.2 !important;
+    min-height: auto !important;
+}
+
+.ipsButton i {
+    line-height: 1.2 !important;
+}
+
 
 /* ========================================
 GLOBAL & BODY STYLES - Applies to body based on [data-theme]
@@ -148,6 +195,10 @@ body[data-theme] .ipsNavBar_active {
 [data-theme="dark"] .ipsNavBar_active {
     /* Use RGBA of dark's new accent (#D9E2E8) */
     background-color: rgba(217, 226, 232, 0.15) !important;
+}
+[data-theme="material-dark"] .ipsNavBar_active {
+    /* Use RGBA of material-dark's new accent (#3D5AFE) */
+    background-color: rgba(61, 90, 254, 0.15) !important;
 }
 [data-theme="dim"] .ipsNavBar_active {
     /* Use RGBA of dim's blue accent (Calculated from #3399CC) */
@@ -198,7 +249,8 @@ body[data-theme] .ipsDataItem:hover {border-left: 3px solid var(--accent-primary
 body[data-theme] blockquote {background-color: var(--tertiary-bg) !important;border-left: 4px solid var(--accent-primary) !important;color: var(--text-secondary) !important;}
 
 [data-theme="dark"] pre, [data-theme="dark"] code,
-[data-theme="dim"] pre, [data-theme="dim"] code {
+[data-theme="dim"] pre, [data-theme="dim"] code,
+[data-theme="material-dark"] pre, [data-theme="material-dark"] code {
     background-color: #0d1117 !important;
     border: 1px solid var(--border-color) !important;
     color: #79c0ff !important;
@@ -235,6 +287,11 @@ body[data-theme] .cn-post-id-display {color: var(--text-muted) !important;}
 body[data-theme] .cn-permalink-icon {color: var(--text-secondary) !important;}
 body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {color: var(--accent-primary) !important;}
 
+/* Custom pointer for collapsible header area */
+.ipsPageHeader.ipsBox.ipsResponsive_pull {
+    cursor: pointer;
+}
+
 /* Other styles (non-theme-specific, like sidebar collapse) are unchanged but remain in this GM_addStyle block */
 #ipsLayout_contentArea,
 #ipsLayout_contentWrapper,
@@ -265,7 +322,8 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
 
     // 2. THEME TOGGLE FUNCTIONALITY (UNCHANGED)
     const THEME_STATE_KEY = 'cnThemeMode';
-    const THEMES = ['light', 'dark', 'dim']; // Cycle order: light -> dark -> dim -> light
+    // Cycle: light -> dark -> dim -> material-dark -> light
+    const THEMES = ['light', 'dark', 'dim', 'material-dark'];
 
     function initializeTheme() {
         const storedTheme = localStorage.getItem(THEME_STATE_KEY);
@@ -291,6 +349,7 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
             switch(theme) {
                 case 'light': return { iconClass: 'fa fa-sun-o', text: 'Light Mode' };
                 case 'dim': return { iconClass: 'fa fa-adjust', text: 'Dim Mode' };
+                case 'material-dark': return { iconClass: 'fa fa-paint-brush', text: 'Material Dark' };
                 case 'dark':
                 default: return { iconClass: 'fa fa-moon-o', text: 'Dark Mode' };
             }
@@ -325,7 +384,7 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
             let current = document.body.getAttribute('data-theme') || 'dark';
             let currentIndex = getThemeIndex(current);
 
-            // Calculate the next theme index in the cycle: light -> dark -> dim -> light
+            // Calculate the next theme index in the cycle
             let nextIndex = (currentIndex + 1) % THEMES.length;
             let nextTheme = THEMES[nextIndex];
 
@@ -444,61 +503,64 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
         }
     }
 
-    // 4. MAIN HEADER COLLAPSIBLE FUNCTIONALITY (UNCHANGED)
+    // 4. MAIN HEADER COLLAPSIBLE FUNCTIONALITY (UPDATED TO USE CLICK LISTENER ON HEADER)
     function setupCollapsibleHeader() {
         const headerContainer = document.querySelector('.ipsPageHeader.ipsBox.ipsResponsive_pull');
-        const h1 = headerContainer ? headerContainer.querySelector('h1') : null;
 
-        if (!headerContainer || !h1) {
+        if (!headerContainer) {
             return;
         }
 
+        // Get all children of the header container
         const headerChildren = Array.from(headerContainer.children);
-        const titleWrapper = headerContainer.querySelector('.ipsFlex-flex\\:11');
 
+        // Find the element containing the toolbar list (to be removed)
+        let toolbarList = headerContainer.querySelector('ul.ipsToolList.ipsToolList_horizontal');
+        let toggleButton = null;
+
+        if (toolbarList) {
+            // Find and remove the existing list item (li) containing the toggle button
+            const toggleLi = toolbarList.querySelector('.cn-collapsible-header-li');
+            if (toggleLi) {
+                toggleButton = toggleLi.querySelector('button'); // Store for removal reference
+                toggleLi.remove();
+            }
+        }
+
+        // Filter out the elements we want to collapse (typically everything after the main title/toolbar)
         let collapsibleElements = [];
+        let foundToolbar = false;
+
         headerChildren.forEach(child => {
-            // Only collapse elements that are NOT the main title wrapper
-            if (child !== titleWrapper && child !== h1 && !h1.contains(child)) {
+            // Check if this child contains the toolbar
+            const containsToolbar = child.contains(toolbarList);
+
+            if (toolbarList && containsToolbar) {
+                // If it contains the toolbar, mark it as found and skip
+                foundToolbar = true;
+                return;
+            }
+
+            // If the toolbar was already found OR if the child doesn't seem to be a main title
+            if (foundToolbar || !child.querySelector('h1')) {
                 collapsibleElements.push(child);
             }
         });
 
+        // Fallback or simpler cases: collapse everything except the first child (which usually contains the main title)
+        if (collapsibleElements.length === 0 && headerChildren.length > 1) {
+             collapsibleElements = headerChildren.slice(1);
+        }
+
         if (collapsibleElements.length === 0) {
-             if (headerChildren.length > 1) {
-                 collapsibleElements = headerChildren.slice(1);
-             } else {
-                 return;
-             }
+            // If nothing to collapse, exit
+            return;
         }
 
         const HEADER_STATE_KEY = 'cnMainHeaderCollapsed';
         let isCollapsed = localStorage.getItem(HEADER_STATE_KEY) === 'true';
 
-        // 1. Create and insert the toggle button
-        const toggleButton = document.createElement('button');
-        toggleButton.type = 'button';
-        toggleButton.className = 'ipsButton ipsButton_verySmall ipsButton_light';
-        toggleButton.title = 'Toggle Header Visibility';
-
-        // Target the existing toolbar
-        let toolbarList = headerContainer.querySelector('ul.ipsToolList.ipsToolList_horizontal');
-
-        if (toolbarList) {
-             const li = document.createElement('li');
-             li.className = 'cn-collapsible-header-li';
-             li.appendChild(toggleButton);
-             toolbarList.prepend(li);
-        } else {
-             const titleFlexWrapper = headerContainer.querySelector('.ipsFlex-flex\\:11');
-             if (titleFlexWrapper) {
-                 titleFlexWrapper.appendChild(toggleButton);
-             } else {
-                 headerContainer.prepend(toggleButton);
-             }
-        }
-
-        // 2. Logic to apply the visual state and update the DOM
+        // Logic to apply the visual state and update the DOM
         function toggleHeader(shouldCollapse) {
             collapsibleElements.forEach(el => {
                 if (shouldCollapse) {
@@ -507,23 +569,25 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
                     el.classList.remove('cn-collapsed-header-content');
                 }
             });
-
-            if (shouldCollapse) {
-                toggleButton.innerHTML = '<i class="fa fa-chevron-down" aria-hidden="true"></i> <span class="ipsResponsive_hidePhone">Show Info</span>';
-            } else {
-                toggleButton.innerHTML = '<i class="fa fa-chevron-up" aria-hidden="true"></i> <span class="ipsResponsive_hidePhone">Hide Info</span>';
-            }
             localStorage.setItem(HEADER_STATE_KEY, shouldCollapse);
         }
 
         // Apply initial state
         toggleHeader(isCollapsed);
 
-        // Add click listener
-        toggleButton.addEventListener('click', () => {
+        // Add click listener to the entire header container
+        headerContainer.addEventListener('click', (e) => {
+            // Prevent collapsing if the user clicked on a link or button within the header
+            const target = e.target;
+            if (target.tagName === 'A' || target.closest('a') || target.tagName === 'BUTTON' || target.closest('button')) {
+                return;
+            }
+
             let newState = collapsibleElements.some(el => el.classList.contains('cn-collapsed-header-content'));
             toggleHeader(!newState);
         });
+
+        // Add style to show the element is clickable (added to GM_addStyle block above)
     }
 
 
@@ -611,7 +675,7 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
     // --- Initialization ---
     initializeTheme(); // Set the initial theme state immediately (light, dark, or dim)
     initPermalinks();
-    setupCollapsibleHeader();
+    setupCollapsibleHeader(); // Now uses click on the header itself
     setupCollapsibleSidebar(); // This function now also calls setupThemeToggle
 
 })();

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle
 // @namespace    http://tampermonkey.net/
-// @version      5.1
+// @version      5.2
 // @description  Optimized: Material Dark/Light/Dim themes with toggle, collapsible sidebar/header, permalinks. No FOUC.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
@@ -13,8 +13,8 @@
     'use strict';
 
     const THEME_KEY = 'cnThemeMode';
-    // Added three new material themes for variation
-    const THEMES = ['light', 'dark', 'dim', 'material-dark', 'material-emerald', 'material-redline', 'material-purple'];
+    // Reordered to place the new 'dark-' themes directly after the base 'dark' theme for smoother cycling.
+    const THEMES = ['light', 'dark', 'dark-teal', 'dark-orange', 'dark-pink', 'dim', 'material-dark', 'material-emerald', 'material-redline'];
     
     // Apply theme immediately to prevent FOUC
     const applyInitialTheme = () => {
@@ -41,10 +41,43 @@
     --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px;
 }
 
-/* Original Dark */
+/* Original Dark (Base for new accent themes) */
 [data-theme="dark"] {
     --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
     --accent-primary: #D9E2E8; --accent-secondary: #B5C8D3;
+    --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
+    --border-color: #444444; --border-light: #555555;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 3px 6px rgba(0,0,0,0.6);
+    --success: #10b981; --warning: #f59e0b; --error: #ef4444;
+}
+
+/* NEW: Dark Teal (Accent only change - #1E1E1E base) */
+[data-theme="dark-teal"] {
+    --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
+    --accent-primary: #00BCD4; /* Cyan/Teal */
+    --accent-secondary: #84FFFF;
+    --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
+    --border-color: #444444; --border-light: #555555;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 3px 6px rgba(0,0,0,0.6);
+    --success: #10b981; --warning: #f59e0b; --error: #ef4444;
+}
+
+/* NEW: Dark Orange (Accent only change - #1E1E1E base) */
+[data-theme="dark-orange"] {
+    --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
+    --accent-primary: #FF9800; /* Amber/Orange */
+    --accent-secondary: #FFCC80;
+    --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
+    --border-color: #444444; --border-light: #555555;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 3px 6px rgba(0,0,0,0.6);
+    --success: #10b981; --warning: #f59e0b; --error: #ef4444;
+}
+
+/* NEW: Dark Pink (Accent only change - #1E1E1E base) */
+[data-theme="dark-pink"] {
+    --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
+    --accent-primary: #E91E63; /* Deep Pink */
+    --accent-secondary: #F48FB1;
     --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
     --border-color: #444444; --border-light: #555555;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 3px 6px rgba(0,0,0,0.6);
@@ -61,7 +94,7 @@
     --success: #66BB6A; --warning: #FFCA28; --error: #EF5350;
 }
 
-/* NEW: Material Dark (Emerald) - Tech/Nature feel with green accent */
+/* Material Dark (Emerald) - Tech/Nature feel with green accent */
 [data-theme="material-emerald"] {
     --primary-bg: #101515;
     --secondary-bg: #1A2424;
@@ -80,7 +113,7 @@
     --error: #FF5252;
 }
 
-/* NEW: Material Dark (Redline) - High contrast and energetic with red accent */
+/* Material Dark (Redline) - High contrast and energetic with red accent */
 [data-theme="material-redline"] {
     --primary-bg: #121212;
     --secondary-bg: #1E1E1E;
@@ -94,25 +127,6 @@
     --border-light: #505050;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
     --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
-    --success: #66BB6A;
-    --warning: #FFCA28;
-    --error: #EF5350;
-}
-
-/* NEW: Material Dark (Midnight Purple) - Softer contrast with a purple accent */
-[data-theme="material-purple"] {
-    --primary-bg: #1C1B22; /* Softer, purplish dark background */
-    --secondary-bg: #25242D;
-    --tertiary-bg: #32313A;
-    --accent-primary: #7C4DFF; /* Mid-tone Deep Purple */
-    --accent-secondary: #B388FF;
-    --text-primary: #FFFFFF;
-    --text-secondary: #C0C0C0;
-    --text-muted: #A0A0A0;
-    --border-color: #403E4D;
-    --border-light: #555364;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-    --shadow-md: 0 3px 6px rgba(0,0,0,0.5);
     --success: #66BB6A;
     --warning: #FFCA28;
     --error: #EF5350;
@@ -166,7 +180,9 @@ body[data-theme] .ipsNavBar_active {
 [data-theme="material-dark"] .ipsNavBar_active { background-color: rgba(61,90,254,0.15) !important; }
 [data-theme="material-emerald"] .ipsNavBar_active { background-color: rgba(0,200,83,0.15) !important; }
 [data-theme="material-redline"] .ipsNavBar_active { background-color: rgba(255,61,0,0.15) !important; }
-[data-theme="material-purple"] .ipsNavBar_active { background-color: rgba(124,77,255,0.15) !important; }
+[data-theme="dark-teal"] .ipsNavBar_active { background-color: rgba(0,188,212,0.15) !important; } /* New */
+[data-theme="dark-orange"] .ipsNavBar_active { background-color: rgba(255,152,0,0.15) !important; } /* New */
+[data-theme="dark-pink"] .ipsNavBar_active { background-color: rgba(233,30,99,0.15) !important; } /* New */
 [data-theme="dim"] .ipsNavBar_active { background-color: rgba(51,153,204,0.15) !important; }
 [data-theme="light"] .ipsNavBar_active { background-color: rgba(25,118,210,0.1) !important; }
 
@@ -276,7 +292,10 @@ body[data-theme] input:focus, body[data-theme] textarea:focus, body[data-theme] 
 
 /* Code */
 [data-theme="dark"] pre, [data-theme="dark"] code, [data-theme="dim"] pre, 
-[data-theme="dim"] code, [data-theme*="material-"] pre, [data-theme*="material-"] code {
+[data-theme="dim"] code, [data-theme*="material-"] pre, [data-theme*="material-"] code,
+[data-theme="dark-teal"] pre, [data-theme="dark-teal"] code,
+[data-theme="dark-orange"] pre, [data-theme="dark-orange"] code,
+[data-theme="dark-pink"] pre, [data-theme="dark-pink"] code {
     background-color: #0d1117 !important;
     border: 1px solid var(--border-color) !important;
     color: #79c0ff !important;
@@ -347,10 +366,13 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
         light: { icon: 'fa-sun-o', text: 'Light Mode' },
         dark: { icon: 'fa-moon-o', text: 'Dark Mode' },
         dim: { icon: 'fa-adjust', text: 'Dim Mode' },
-        'material-dark': { icon: 'fa-paint-brush', text: 'Material Blue' }, // Renamed for clarity
-        'material-emerald': { icon: 'fa-leaf', text: 'Material Emerald' }, // New
-        'material-redline': { icon: 'fa-fire', text: 'Material Redline' },   // New
-        'material-purple': { icon: 'fa-magic', text: 'Material Purple' }   // New
+        'material-dark': { icon: 'fa-paint-brush', text: 'Material Blue' },
+        'material-emerald': { icon: 'fa-leaf', text: 'Material Emerald' },
+        'material-redline': { icon: 'fa-fire', text: 'Material Redline' },
+        // New Dark base themes with unique accents
+        'dark-teal': { icon: 'fa-tint', text: 'Dark Teal' },
+        'dark-orange': { icon: 'fa-flask', text: 'Dark Orange' },
+        'dark-pink': { icon: 'fa-heart', text: 'Dark Pink' }
     };
 
     // Utility Functions

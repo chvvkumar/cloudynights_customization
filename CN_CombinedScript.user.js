@@ -1,16 +1,53 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle
 // @namespace    http://tampermonkey.net/
-// @version      5.0
-// @description  Applies a Material Dark/Light/Dim/Material-Dark theme with toggle, makes the right sidebar collapsible (hides all widgets including Top Posters), expands main content, and adds permalinks. Adds collapsible main content headers.
+// @version      4.7
+// @description  Applies a Material Dark/Light/Dim/Material-Dark theme with toggle, makes the right sidebar collapsible (hides all widgets including Top Posters), expands main content, and adds permalinks. Adds collapsible main content headers. No FOUC.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
 // @grant        GM_addStyle
-// @run-at       document-idle
+// @run-at       document-start
 // ==/UserScript==
 
 (function() {
     'use strict';
+
+    // CRITICAL: Apply theme IMMEDIATELY before page renders to prevent FOUC
+    const THEME_STATE_KEY = 'cnThemeMode';
+    const THEMES = ['light', 'dark', 'dim', 'material-dark'];
+    
+    function applyThemeImmediately() {
+        const storedTheme = localStorage.getItem(THEME_STATE_KEY);
+        let initialTheme = (storedTheme && THEMES.includes(storedTheme)) ? storedTheme : 'dark';
+        
+        // Apply theme to HTML element immediately (before body exists)
+        if (document.documentElement) {
+            document.documentElement.setAttribute('data-theme', initialTheme);
+        }
+        
+        // Also apply to body when it becomes available
+        const applyToBody = () => {
+            if (document.body) {
+                document.body.setAttribute('data-theme', initialTheme);
+            }
+        };
+        
+        if (document.body) {
+            applyToBody();
+        } else {
+            // Wait for body to be available
+            const observer = new MutationObserver(() => {
+                if (document.body) {
+                    applyToBody();
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.documentElement, { childList: true });
+        }
+    }
+    
+    // Execute immediately
+    applyThemeImmediately();
 
     // 1. GLOBAL CSS STYLES
     GM_addStyle(`
@@ -21,7 +58,8 @@
     --primary-bg (Area 2 - Page BG) = Darkest Shade (#1E1E1E)
     --secondary-bg & --tertiary-bg (Area 1/3 - Surfaces) = Lighter Shade (#2B2B2B)
 ======================================== */
-[data-theme="dark"] {
+[data-theme="dark"],
+html[data-theme="dark"] {
     /* Backgrounds: Using only two shades (Neutral Greys) */
     --primary-bg: #1E1E1E; /* Darkest shade (Page BG) */
     --secondary-bg: #2B2B2B; /* Lighter shade (Header & Cards) */
@@ -52,7 +90,8 @@
     THEME VARIABLES - MATERIAL DARK MODE (Standard Dark Grey + Indigo Accent)
     Primary Accent: #3D5AFE (Indigo A400) for excellent contrast
 ======================================== */
-[data-theme="material-dark"] {
+[data-theme="material-dark"],
+html[data-theme="material-dark"] {
     /* Backgrounds: Standard Material Dark Greys */
     --primary-bg: #121212; /* Page BG (Darkest) */
     --secondary-bg: #1E1E1E; /* Surfaces/Cards (Darker grey) */
@@ -82,7 +121,8 @@
 /* ========================================
     THEME VARIABLES - LIGHT MODE (Simplified to two shades)
 ======================================== */
-[data-theme="light"] {
+[data-theme="light"],
+html[data-theme="light"] {
     /* Backgrounds: Using only two shades (White + Lighter Gray) */
     --primary-bg: #FFFFFF; /* Darkest shade analog (Pure White) */
     --secondary-bg: #E8EDF1; /* Lighter shade analog (Off-white/light gray) */
@@ -112,7 +152,8 @@
 /* ========================================
     THEME VARIABLES - DIM MODE (Exact HSL conversion from style.postcss)
 ======================================== */
-[data-theme="dim"] {
+[data-theme="dim"],
+html[data-theme="dim"] {
     /* Backgrounds: Using surface1-dim and surface2-dim */
     --primary-bg: #2E353B; /* surface1-dim (hsl(200, 10%, 20%)) - Page BG */
     --secondary-bg: #39444D; /* surface2-dim (hsl(200, 10%, 25%)) - Header & Cards */
@@ -146,6 +187,11 @@
     --radius-lg: 12px;
 }
 
+/* Apply background immediately to html element to prevent white flash */
+html[data-theme] {
+    background-color: var(--primary-bg) !important;
+}
+
 /* ========================================
    REDUCED BUTTON HEIGHT
 ======================================== */
@@ -166,7 +212,8 @@
 /* ========================================
 GLOBAL & BODY STYLES - Applies to body based on [data-theme]
 ======================================== */
-body[data-theme] {
+body[data-theme],
+html[data-theme] body {
     background-color: var(--primary-bg) !important;
     color: var(--text-primary) !important;
     font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif !important;
@@ -348,31 +395,18 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
 
     `);
 
-    // 2. THEME TOGGLE FUNCTIONALITY (UNCHANGED)
-    const THEME_STATE_KEY = 'cnThemeMode';
-    // Cycle: light -> dark -> dim -> material-dark -> light
-    const THEMES = ['light', 'dark', 'dim', 'material-dark'];
-
-    function initializeTheme() {
-        const storedTheme = localStorage.getItem(THEME_STATE_KEY);
-        // Default to 'dark' if no preference is found, or use stored theme if valid
-        let initialTheme = (storedTheme && THEMES.includes(storedTheme)) ? storedTheme : 'dark';
-
-        document.body.setAttribute('data-theme', initialTheme);
-    }
-
+    // 2. THEME TOGGLE FUNCTIONALITY
     function getThemeIndex(currentTheme) {
         return THEMES.indexOf(currentTheme);
     }
 
     function setupThemeToggle(mainToolList) {
         let currentTheme = localStorage.getItem(THEME_STATE_KEY) || 'dark';
-        if (!THEMES.includes(currentTheme)) currentTheme = 'dark'; // Sanity check
+        if (!THEMES.includes(currentTheme)) currentTheme = 'dark';
 
         const toggleListItem = document.createElement('li');
         toggleListItem.id = 'cn-theme-toggle-li';
 
-        // Helper to get icon and text based on theme
         function getThemeIconInfo(theme) {
             switch(theme) {
                 case 'light': return { iconClass: 'fa fa-sun-o', text: 'Light Mode' };
@@ -390,15 +424,14 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
             <span class="ipsResponsive_hidePhone" id="cn-theme-span">&nbsp;${iconInfo.text}</span>
         </button>`;
 
-        // Insert the theme toggle button next to where the sidebar collapse button is (prepended)
         mainToolList.prepend(toggleListItem);
 
         const toggleButton = toggleListItem.querySelector('button');
         const toggleIcon = toggleListItem.querySelector('i');
         const toggleSpan = toggleListItem.querySelector('#cn-theme-span');
 
-
         function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
             document.body.setAttribute('data-theme', theme);
             localStorage.setItem(THEME_STATE_KEY, theme);
 
@@ -411,26 +444,21 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
         toggleButton.addEventListener('click', () => {
             let current = document.body.getAttribute('data-theme') || 'dark';
             let currentIndex = getThemeIndex(current);
-
-            // Calculate the next theme index in the cycle
             let nextIndex = (currentIndex + 1) % THEMES.length;
             let nextTheme = THEMES[nextIndex];
-
             applyTheme(nextTheme);
         });
 
-        // Ensure the button reflects the initialized theme
         applyTheme(currentTheme);
     }
 
-    // 3. PERMALINK FUNCTIONALITY (UNCHANGED)
+    // 3. PERMALINK FUNCTIONALITY
     function showSuccessMessage(message) {
         let msgElement = document.getElementById('cn-permalink-notification');
         if (!msgElement) {
             msgElement = document.createElement('div');
             msgElement.id = 'cn-permalink-notification';
             msgElement.className = 'cn-permalink-success';
-            // Add style for fixed position notification (optional but recommended)
             GM_addStyle('#cn-permalink-notification { position: fixed; top: 10px; right: 10px; padding: 10px 15px; border-radius: 4px; z-index: 10000; opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateX(100%); } #cn-permalink-notification.show { opacity: 1; transform: translateX(0); }');
             document.body.appendChild(msgElement);
         }
@@ -531,7 +559,7 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
         }
     }
 
-    // 4. MAIN HEADER COLLAPSIBLE FUNCTIONALITY (UPDATED TO USE CLICK LISTENER ON HEADER)
+    // 4. MAIN HEADER COLLAPSIBLE FUNCTIONALITY
     function setupCollapsibleHeader() {
         const headerContainer = document.querySelector('.ipsPageHeader.ipsBox.ipsResponsive_pull');
 
@@ -539,56 +567,45 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
             return;
         }
 
-        // Get all children of the header container
         const headerChildren = Array.from(headerContainer.children);
-
-        // Find the element containing the toolbar list (to be removed)
         let toolbarList = headerContainer.querySelector('ul.ipsToolList.ipsToolList_horizontal');
         let toggleButton = null;
 
         if (toolbarList) {
-            // Find and remove the existing list item (li) containing the toggle button
             const toggleLi = toolbarList.querySelector('.cn-collapsible-header-li');
             if (toggleLi) {
-                toggleButton = toggleLi.querySelector('button'); // Store for removal reference
+                toggleButton = toggleLi.querySelector('button');
                 toggleLi.remove();
             }
         }
 
-        // Filter out the elements we want to collapse (typically everything after the main title/toolbar)
         let collapsibleElements = [];
         let foundToolbar = false;
 
         headerChildren.forEach(child => {
-            // Check if this child contains the toolbar
             const containsToolbar = child.contains(toolbarList);
 
             if (toolbarList && containsToolbar) {
-                // If it contains the toolbar, mark it as found and skip
                 foundToolbar = true;
                 return;
             }
 
-            // If the toolbar was already found OR if the child doesn't seem to be a main title
             if (foundToolbar || !child.querySelector('h1')) {
                 collapsibleElements.push(child);
             }
         });
 
-        // Fallback or simpler cases: collapse everything except the first child (which usually contains the main title)
         if (collapsibleElements.length === 0 && headerChildren.length > 1) {
              collapsibleElements = headerChildren.slice(1);
         }
 
         if (collapsibleElements.length === 0) {
-            // If nothing to collapse, exit
             return;
         }
 
         const HEADER_STATE_KEY = 'cnMainHeaderCollapsed';
         let isCollapsed = localStorage.getItem(HEADER_STATE_KEY) === 'true';
 
-        // Logic to apply the visual state and update the DOM
         function toggleHeader(shouldCollapse) {
             collapsibleElements.forEach(el => {
                 if (shouldCollapse) {
@@ -600,12 +617,9 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
             localStorage.setItem(HEADER_STATE_KEY, shouldCollapse);
         }
 
-        // Apply initial state
         toggleHeader(isCollapsed);
 
-        // Add click listener to the entire header container
         headerContainer.addEventListener('click', (e) => {
-            // Prevent collapsing if the user clicked on a link or button within the header
             const target = e.target;
             if (target.tagName === 'A' || target.closest('a') || target.tagName === 'BUTTON' || target.closest('button')) {
                 return;
@@ -614,19 +628,13 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
             let newState = collapsibleElements.some(el => el.classList.contains('cn-collapsed-header-content'));
             toggleHeader(!newState);
         });
-
-        // Add style to show the element is clickable (added to GM_addStyle block above)
     }
 
-
-    // 5. SIDEBAR TOGGLE FUNCTIONALITY (UNCHANGED logic, but relies on new theme toggle)
+    // 5. SIDEBAR TOGGLE FUNCTIONALITY
     function setupCollapsibleSidebar() {
         const sidebar = document.getElementById('ipsLayout_sidebar');
-
-        // Find the main Tool List
         let mainToolList = document.querySelector('.ipsToolList_horizontal');
 
-        // Fallback for forum/index pages. This selector is crucial for the button insertion.
         if (!mainToolList) {
             mainToolList = document.querySelector('.ipsPageHeader + .ipsClearfix .ipsToolList');
         }
@@ -638,9 +646,7 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
             return;
         }
 
-        // --- NEW: Setup the Theme Toggle first (prepended) ---
         setupThemeToggle(mainToolList);
-        // -----------------------------------------------------
 
         contentArea.classList.add('cn-collapsible-container');
 
@@ -648,8 +654,6 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
         toggleListItem.id = 'cn-sidebar-toggle-li';
         let isCollapsed = localStorage.getItem('cnSidebarCollapsed') === 'true';
 
-        // FIX: Corrected Arrow Logic. Left arrow (<) means 'Expand Sidebar'
-        // Right arrow (>) means 'Collapse Sidebar'
         const initialIconClass = isCollapsed ? 'fa fa-chevron-left' : 'fa fa-chevron-right';
         const initialButtonText = isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar';
 
@@ -658,7 +662,6 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
             <span class="ipsResponsive_hidePhone">&nbsp;${initialButtonText}</span>
         </button>`;
 
-        // Insert it after the theme toggle button (which is now the first child)
         if (mainToolList.children.length > 0) {
             const themeToggleLi = mainToolList.querySelector('#cn-theme-toggle-li');
             if (themeToggleLi) {
@@ -674,15 +677,12 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
         const toggleIcon = toggleListItem.querySelector('i');
         const toggleSpan = toggleListItem.querySelector('span');
 
-        // Logic to apply the visual state and update the DOM
         function toggleSidebar(shouldCollapse) {
             if (shouldCollapse) {
-                // State: Collapsed (sidebar hidden). Icon: < (fa-chevron-left)
                 contentArea.classList.add('cn-sidebar-collapsed');
                 toggleIcon.className = 'fa fa-chevron-left';
                 if (toggleSpan) toggleSpan.textContent = ' Expand Sidebar';
             } else {
-                // State: Expanded (sidebar visible). Icon: > (fa-chevron-right)
                 contentArea.classList.remove('cn-sidebar-collapsed');
                 toggleIcon.className = 'fa fa-chevron-right';
                 if (toggleSpan) toggleSpan.textContent = ' Collapse Sidebar';
@@ -690,20 +690,30 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
             localStorage.setItem('cnSidebarCollapsed', shouldCollapse);
         }
 
-        // Apply initial state
         toggleSidebar(isCollapsed);
 
-        // Add click listener
         toggleButton.addEventListener('click', () => {
             let newState = contentArea.classList.contains('cn-sidebar-collapsed');
             toggleSidebar(!newState);
         });
     }
 
-    // --- Initialization ---
-    initializeTheme(); // Set the initial theme state immediately (light, dark, or dim)
-    initPermalinks();
-    setupCollapsibleHeader(); // Now uses click on the header itself
-    setupCollapsibleSidebar(); // This function now also calls setupThemeToggle
+    // --- Wait for DOM to be ready before initializing interactive features ---
+    function init() {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                initPermalinks();
+                setupCollapsibleHeader();
+                setupCollapsibleSidebar();
+            });
+        } else {
+            // DOM already loaded
+            initPermalinks();
+            setupCollapsibleHeader();
+            setupCollapsibleSidebar();
+        }
+    }
+
+    init();
 
 })();

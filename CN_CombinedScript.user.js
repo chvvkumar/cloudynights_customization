@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle
+// @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle (Minified)
 // @namespace    http://tampermonkey.net/
-// @version      5.2
+// @version      6.1.min
 // @description  Optimized: Material Dark/Light/Dim themes with toggle, collapsible sidebar/header, permalinks. No FOUC.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
@@ -13,126 +13,83 @@
     'use strict';
 
     const THEME_KEY = 'cnThemeMode';
-    // Reordered to place the new 'dark-' themes directly after the base 'dark' theme for smoother cycling.
-    const THEMES = ['light', 'dark', 'dark-teal', 'dark-orange', 'dark-pink', 'dim', 'material-dark', 'material-emerald', 'material-redline'];
-    
-    // Apply theme immediately to prevent FOUC
+    // Streamlined theme array - order preserved
+    const THEMES = ['light', 'dark', 'dark-teal', 'dark-orange', 'dark-pink', 'dark-red-astronomy', 'dim', 'material-dark', 'material-emerald', 'material-redline'];
+
+    // Theme cycle config (Minified)
+    const T_CFG = {
+        light: { i: 'fa-sun-o', t: 'Light Mode' }, dark: { i: 'fa-moon-o', t: 'Dark Mode' }, dim: { i: 'fa-adjust', t: 'Dim Mode' },
+        'material-dark': { i: 'fa-paint-brush', t: 'Material Blue' }, 'material-emerald': { i: 'fa-leaf', t: 'Material Emerald' },
+        'material-redline': { i: 'fa-fire', t: 'Material Redline' }, 'dark-teal': { i: 'fa-tint', t: 'Dark Teal' },
+        'dark-orange': { i: 'fa-flask', t: 'Dark Orange' }, 'dark-pink': { i: 'fa-heart', t: 'Dark Pink' },
+        'dark-red-astronomy': { i: 'fa-binoculars', t: 'Astronomy Red' }
+    };
+
+    // --- FOUC Prevention: Apply Initial Theme ---
     const applyInitialTheme = () => {
         const theme = localStorage.getItem(THEME_KEY);
-        // Default to 'material-dark' for a strong material starting point
-        const initial = THEMES.includes(theme) ? theme : 'material-dark'; 
+        const initial = THEMES.includes(theme) ? theme : 'material-dark';
         document.documentElement.setAttribute('data-theme', initial);
-        
+
         const applyToBody = () => document.body?.setAttribute('data-theme', initial);
-        document.body ? applyToBody() : new MutationObserver(() => {
-            if (document.body) {
-                applyToBody();
-                observer.disconnect();
-            }
-        }).observe(document.documentElement, { childList: true });
+        if (document.body) {
+            applyToBody();
+        } else {
+            new MutationObserver((_, obs) => {
+                if (document.body) {
+                    applyToBody();
+                    obs.disconnect();
+                }
+            }).observe(document.documentElement, { childList: true });
+        }
     };
-    
     applyInitialTheme();
 
-    // Consolidated CSS with optimized theme variables
+    // Consolidated CSS (Reduced variable redundancy and merged similar selectors)
     GM_addStyle(`
-/* Theme Variables */
-:root {
-    --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px;
-}
-
-/* Original Dark (Base for new accent themes) */
-[data-theme="dark"] {
+:root { --radius-sm: 4px; --radius-md: 8px; }
+/* Merged Theme Definitions - Reduced redundancy, kept unique values */
+[data-theme="dark"], [data-theme="dark-teal"], [data-theme="dark-orange"], [data-theme="dark-pink"] {
     --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
-    --accent-primary: #D9E2E8; --accent-secondary: #B5C8D3;
     --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
     --border-color: #444444; --border-light: #555555;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 3px 6px rgba(0,0,0,0.6);
     --success: #10b981; --warning: #f59e0b; --error: #ef4444;
 }
+[data-theme="dark-teal"] { --accent-primary: #00BCD4; --accent-secondary: #84FFFF; }
+[data-theme="dark-orange"] { --accent-primary: #FF9800; --accent-secondary: #FFCC80; }
+[data-theme="dark-pink"] { --accent-primary: #E91E63; --accent-secondary: #F48FB1; }
+[data-theme="dark"] { --accent-primary: #D9E2E8; --accent-secondary: #B5C8D3; }
 
-/* NEW: Dark Teal (Accent only change - #1E1E1E base) */
-[data-theme="dark-teal"] {
-    --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
-    --accent-primary: #00BCD4; /* Cyan/Teal */
-    --accent-secondary: #84FFFF;
-    --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
-    --border-color: #444444; --border-light: #555555;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 3px 6px rgba(0,0,0,0.6);
-    --success: #10b981; --warning: #f59e0b; --error: #ef4444;
+[data-theme="dark-red-astronomy"] {
+    --primary-bg: #000; --secondary-bg: #1A0000; --tertiary-bg: #1A0000;
+    --accent-primary: #FF3333; --accent-secondary: #CC0000;
+    --text-primary: #D44E4E; --text-secondary: #8A3333; --text-muted: #442222;
+    --border-color: #330000; --border-light: #550000;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.6); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
+    --success: #8A3333; --warning: #CC0000; --error: #FF3333;
+    color: var(--text-primary) !important;
 }
 
-/* NEW: Dark Orange (Accent only change - #1E1E1E base) */
-[data-theme="dark-orange"] {
-    --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
-    --accent-primary: #FF9800; /* Amber/Orange */
-    --accent-secondary: #FFCC80;
-    --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
-    --border-color: #444444; --border-light: #555555;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 3px 6px rgba(0,0,0,0.6);
-    --success: #10b981; --warning: #f59e0b; --error: #ef4444;
-}
-
-/* NEW: Dark Pink (Accent only change - #1E1E1E base) */
-[data-theme="dark-pink"] {
-    --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
-    --accent-primary: #E91E63; /* Deep Pink */
-    --accent-secondary: #F48FB1;
-    --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
-    --border-color: #444444; --border-light: #555555;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 3px 6px rgba(0,0,0,0.6);
-    --success: #10b981; --warning: #f59e0b; --error: #ef4444;
-}
-
-/* Original Material Dark (Deep Blue) */
-[data-theme="material-dark"] {
+[data-theme="material-dark"], [data-theme="material-redline"] {
     --primary-bg: #121212; --secondary-bg: #1E1E1E; --tertiary-bg: #2C2C2C;
-    --accent-primary: #3D5AFE; --accent-secondary: #8C9EFF;
     --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
     --border-color: #383838; --border-light: #505050;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.5); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
     --success: #66BB6A; --warning: #FFCA28; --error: #EF5350;
 }
+[data-theme="material-dark"] { --accent-primary: #3D5AFE; --accent-secondary: #8C9EFF; }
+[data-theme="material-redline"] { --accent-primary: #FF3D00; --accent-secondary: #FF8A65; }
 
-/* Material Dark (Emerald) - Tech/Nature feel with green accent */
 [data-theme="material-emerald"] {
-    --primary-bg: #101515;
-    --secondary-bg: #1A2424;
-    --tertiary-bg: #283434;
-    --accent-primary: #00C853; /* Vibrant Emerald Green */
-    --accent-secondary: #69F0AE;
-    --text-primary: #E0E0E0;
-    --text-secondary: #A0A0A0;
-    --text-muted: #787878;
-    --border-color: #303A3A;
-    --border-light: #485A5A;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
-    --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
-    --success: #64DD17;
-    --warning: #FFC400;
-    --error: #FF5252;
+    --primary-bg: #101515; --secondary-bg: #1A2424; --tertiary-bg: #283434;
+    --accent-primary: #00C853; --accent-secondary: #69F0AE;
+    --text-primary: #E0E0E0; --text-secondary: #A0A0A0; --text-muted: #787878;
+    --border-color: #303A3A; --border-light: #485A5A;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
+    --success: #64DD17; --warning: #FFC400; --error: #FF5252;
 }
 
-/* Material Dark (Redline) - High contrast and energetic with red accent */
-[data-theme="material-redline"] {
-    --primary-bg: #121212;
-    --secondary-bg: #1E1E1E;
-    --tertiary-bg: #2C2C2C;
-    --accent-primary: #FF3D00; /* Deep Saturated Red/Orange */
-    --accent-secondary: #FF8A65;
-    --text-primary: #FFFFFF;
-    --text-secondary: #B0B0B0;
-    --text-muted: #888888;
-    --border-color: #383838;
-    --border-light: #505050;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
-    --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
-    --success: #66BB6A;
-    --warning: #FFCA28;
-    --error: #EF5350;
-}
-
-/* Original Light */
 [data-theme="light"] {
     --primary-bg: #FFFFFF; --secondary-bg: #E8EDF1; --tertiary-bg: #E8EDF1;
     --accent-primary: #1976D2; --accent-secondary: #0D47A1;
@@ -142,7 +99,6 @@
     --success: #4CAF50; --warning: #FF9800; --error: #F44336;
 }
 
-/* Original Dim */
 [data-theme="dim"] {
     --primary-bg: #2E353B; --secondary-bg: #39444D; --tertiary-bg: #39444D;
     --accent-primary: #3399CC; --accent-secondary: #1A79B3;
@@ -152,239 +108,155 @@
     --success: #68D391; --warning: #F6AD55; --error: #FC8181;
 }
 
-/* Base Styles */
+/* Consolidated Base Styles */
 html[data-theme], body[data-theme] {
-    background-color: var(--primary-bg) !important;
-    color: var(--text-primary) !important;
+    background-color: var(--primary-bg) !important; color: var(--text-primary) !important;
     font-family: 'Roboto','Helvetica Neue',Arial,sans-serif !important;
     transition: background-color 0.3s, color 0.3s;
 }
+body[data-theme] .ipsApp, #ipsLayout_contentArea, #ipsLayout_contentWrapper,
+#ipsLayout_mainArea, .ipsLayout_mainArea > section { background-color: transparent !important; }
 
-body[data-theme] .ipsApp, #ipsLayout_contentArea, #ipsLayout_contentWrapper, 
-#ipsLayout_mainArea, .ipsLayout_mainArea > section {
-    background-color: transparent !important;
-}
-
-/* Headers & Navigation */
+/* Consolidated Component Styles */
 body[data-theme] #ipsLayout_header {
-    background: var(--secondary-bg) !important;
-    border-bottom: 1px solid var(--border-color) !important;
+    background: var(--secondary-bg) !important; border-bottom: 1px solid var(--border-color) !important;
     box-shadow: var(--shadow-sm) !important;
 }
-
-body[data-theme] .ipsNavBar_active {
-    border-bottom: 2px solid var(--accent-primary) !important;
+body[data-theme] .ipsNavBar_primary, body[data-theme] .ipsButtonBar {
+    background-color: var(--secondary-bg) !important; border-color: var(--border-color) !important;
 }
+body[data-theme] .ipsNavBar_active { border-bottom: 2px solid var(--accent-primary) !important; }
+${THEMES.map(t => {
+    // Generates active nav bar BG for each theme, simplified using primary accent as base for opacity
+    const accent = getComputedStyle(document.documentElement).getPropertyValue(`--accent-primary`);
+    // Fallback/direct color mapping for best results (original script's method)
+    const map = {
+        'dark': 'rgba(217,226,232,0.15)', 'material-dark': 'rgba(61,90,254,0.15)', 'material-emerald': 'rgba(0,200,83,0.15)',
+        'material-redline': 'rgba(255,61,0,0.15)', 'dark-teal': 'rgba(0,188,212,0.15)', 'dark-orange': 'rgba(255,152,0,0.15)',
+        'dark-pink': 'rgba(233,30,99,0.15)', 'dark-red-astronomy': 'rgba(255,51,51,0.2)', 'dim': 'rgba(51,153,204,0.15)',
+        'light': 'rgba(25,118,210,0.1)'
+    };
+    return `[data-theme="${t}"] .ipsNavBar_active { background-color: ${map[t]} !important; }`;
+}).join('\n')}
 
-[data-theme="dark"] .ipsNavBar_active { background-color: rgba(217,226,232,0.15) !important; }
-[data-theme="material-dark"] .ipsNavBar_active { background-color: rgba(61,90,254,0.15) !important; }
-[data-theme="material-emerald"] .ipsNavBar_active { background-color: rgba(0,200,83,0.15) !important; }
-[data-theme="material-redline"] .ipsNavBar_active { background-color: rgba(255,61,0,0.15) !important; }
-[data-theme="dark-teal"] .ipsNavBar_active { background-color: rgba(0,188,212,0.15) !important; } /* New */
-[data-theme="dark-orange"] .ipsNavBar_active { background-color: rgba(255,152,0,0.15) !important; } /* New */
-[data-theme="dark-pink"] .ipsNavBar_active { background-color: rgba(233,30,99,0.15) !important; } /* New */
-[data-theme="dim"] .ipsNavBar_active { background-color: rgba(51,153,204,0.15) !important; }
-[data-theme="light"] .ipsNavBar_active { background-color: rgba(25,118,210,0.1) !important; }
-
-/* Containers */
+/* Boxes/Containers - Combined rules */
 body[data-theme] .ipsBox {
-    background-color: var(--secondary-bg) !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: var(--radius-md) !important;
-    box-shadow: var(--shadow-sm) !important;
-    transition: all 0.3s ease !important;
+    background-color: var(--secondary-bg) !important; border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important; box-shadow: var(--shadow-sm) !important; transition: all 0.3s ease !important;
 }
-
-body[data-theme] .ipsBox:hover {
-    box-shadow: var(--shadow-md) !important;
-    border-color: var(--accent-primary) !important;
+body[data-theme] .ipsBox:hover { box-shadow: var(--shadow-md) !important; border-color: var(--accent-primary) !important; }
+body[data-theme] .ipsDataItem, body[data-theme] .cTopic, body[data-theme] .cPost, body[data-theme] .cForumRow {
+    background-color: var(--tertiary-bg) !important; border: 1px solid var(--border-color) !important; border-radius: var(--radius-md) !important;
 }
+body[data-theme] .ipsWidget { background-color: var(--secondary-bg) !important; border: 1px solid var(--border-color) !important; }
+body[data-theme] .ipsWidget_title { background: var(--tertiary-bg) !important; color: var(--text-primary) !important; border-bottom: 2px solid var(--accent-primary) !important; }
 
-body[data-theme] .ipsDataItem, body[data-theme] .cTopic, 
-body[data-theme] .cPost, body[data-theme] .cForumRow {
-    background-color: var(--tertiary-bg) !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: var(--radius-md) !important;
-}
-
-body[data-theme] .ipsWidget {
-    background-color: var(--secondary-bg) !important;
-    border: 1px solid var(--border-color) !important;
-}
-
-body[data-theme] .ipsWidget_title {
-    background: var(--tertiary-bg) !important;
-    color: var(--text-primary) !important;
-    border-bottom: 2px solid var(--accent-primary) !important;
-}
-
-/* Typography */
-body[data-theme] h1, body[data-theme] h2, body[data-theme] h3, 
-body[data-theme] h4, body[data-theme] h5, body[data-theme] h6,
-body[data-theme] .ipsType_sectionTitle, body[data-theme] .ipsType_pageTitle {
+/* Typography/Links - Combined rules */
+body[data-theme] h1, body[data-theme] h2, body[data-theme] h3, body[data-theme] h4, body[data-theme] h5, body[data-theme] h6,
+body[data-theme] .ipsType_sectionTitle, body[data-theme] .ipsType_pageTitle, body[data-theme] .ipsDataItem_title {
     color: var(--text-primary) !important; font-weight: 700 !important;
 }
+body[data-theme] .ipsDataItem_title { font-weight: 600 !important; transition: color 0.2s ease !important; }
+body[data-theme] .ipsDataItem_title:hover, body[data-theme] a {
+    color: var(--accent-primary) !important; text-decoration: none !important; transition: all 0.2s ease !important;
+}
+body[data-theme] a:hover { color: var(--accent-secondary) !important; text-decoration: underline !important; }
 
-body[data-theme] .ipsDataItem_title {
-    color: var(--text-primary) !important;
-    font-weight: 600 !important;
-    transition: color 0.2s ease !important;
+/* Button Styles - Combined and simplified */
+body[data-theme] .ipsButton, body[data-theme] .ipsButton_light, body[data-theme] .ipsButton_alternate,
+body[data-theme] .ipsButton_primary, body[data-theme] .ipsButton_important {
+    background-color: var(--tertiary-bg) !important; color: var(--text-primary) !important;
+    border: 1px solid var(--border-light) !important; min-height: auto !important;
+    padding: 6px 12px !important; line-height: 1.2 !important; box-shadow: var(--shadow-sm) !important;
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s, transform 0.2s !important;
+}
+body[data-theme] .ipsButton:hover, body[data-theme] .ipsButton_light:hover, body[data-theme] .ipsButton_alternate:hover,
+body[data-theme] .ipsButton_primary:hover, body[data-theme] .ipsButton_important:hover {
+    background-color: var(--secondary-bg) !important; border-color: var(--accent-primary) !important;
+    color: var(--accent-primary) !important; transform: translateY(-1px) !important; box-shadow: var(--shadow-md) !important;
 }
 
-body[data-theme] .ipsDataItem_title:hover { color: var(--accent-primary) !important; }
-
-/* Links */
-body[data-theme] a {
-    color: var(--accent-primary) !important;
-    text-decoration: none !important;
-    transition: all 0.2s ease !important;
-}
-
-body[data-theme] a:hover {
-    color: var(--accent-secondary) !important;
-    text-decoration: underline !important;
-}
-
-/* Buttons - All buttons use neutral style like theme toggle */
-body[data-theme] .ipsButton,
-body[data-theme] .ipsButton_primary,
-body[data-theme] .ipsButton_important,
-body[data-theme] .ipsButton_alternate,
-body[data-theme] .ipsButton_light,
-body[data-theme] .ipsButton_medium,
-body[data-theme] .ipsButton_small,
-body[data-theme] .ipsButton_verySmall {
-    padding: 6px 12px !important;
-    line-height: 1.2 !important;
-    min-height: auto !important;
-    border-radius: var(--radius-sm) !important;
-    box-shadow: var(--shadow-sm) !important;
-    background-color: var(--tertiary-bg) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--border-light) !important;
-}
-
-body[data-theme] .ipsButton:hover,
-body[data-theme] .ipsButton_primary:hover,
-body[data-theme] .ipsButton_important:hover,
-body[data-theme] .ipsButton_alternate:hover,
-body[data-theme] .ipsButton_light:hover {
-    background-color: var(--secondary-bg) !important;
-    border-color: var(--accent-primary) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: var(--shadow-md) !important;
-}
-
-/* Forms */
-body[data-theme] input[type="text"], body[data-theme] input[type="email"],
-body[data-theme] input[type="password"], body[data-theme] input[type="search"],
-body[data-theme] textarea, body[data-theme] select {
-    background-color: var(--secondary-bg) !important;
-    color: var(--text-primary) !important;
+/* Search Field Fixes - Consolidated rules */
+#elSearch, #elSearch form, body[data-theme] .ipsSearch_focus { background-color: transparent !important; }
+body[data-theme] .ipsSearch input[type="search"] {
+    background-color: var(--secondary-bg) !important; color: var(--text-primary) !important;
     border: 1px solid var(--border-color) !important;
-    border-radius: var(--radius-sm) !important;
+}
+body[data-theme] .ipsSearch button.ipsButton, body[data-theme] .cSearchFilter__text {
+    background-color: var(--secondary-bg) !important; color: var(--text-primary) !important;
+    border-color: var(--border-color) !important; border-radius: var(--radius-sm) !important;
 }
 
-body[data-theme] input:focus, body[data-theme] textarea:focus, body[data-theme] select:focus {
-    border-color: var(--accent-primary) !important;
-    outline: none !important;
+/* Astronomy Red Overrides - Simplified */
+[data-theme="dark-red-astronomy"] {
+    --link-color: var(--accent-primary) !important; --icon-color: var(--text-secondary) !important;
+    --badge-bg: var(--secondary-bg) !important; --badge-color: var(--text-primary) !important;
+    .ipsDataItem_status { filter: sepia(100%) hue-rotate(250deg) saturate(300%) !important; }
+    .ipsDataItem_unread .ipsDataItem_main { border-left-color: var(--accent-primary) !important; }
+    i.fa:not(.fa-spinner):not(.fa-spin) { color: var(--text-primary) !important; }
+    .cn-permalink-icon i.fa { color: var(--text-secondary) !important; }
+    #ipsLayout_header .cLogo, #ipsLayout_header .cLogo * { color: var(--accent-primary) !important; }
+    .ipsButton_primary, .ipsButton_important, .ipsButton_light, .ipsButton_alternate {
+        color: var(--text-primary) !important; border-color: var(--border-light) !important;
+    }
 }
 
-/* Code */
-[data-theme="dark"] pre, [data-theme="dark"] code, [data-theme="dim"] pre, 
-[data-theme="dim"] code, [data-theme*="material-"] pre, [data-theme*="material-"] code,
-[data-theme="dark-teal"] pre, [data-theme="dark-teal"] code,
-[data-theme="dark-orange"] pre, [data-theme="dark-orange"] code,
-[data-theme="dark-pink"] pre, [data-theme="dark-pink"] code {
-    background-color: #0d1117 !important;
-    border: 1px solid var(--border-color) !important;
-    color: #79c0ff !important;
+/* Code & Blockquotes - Consolidated rules */
+[data-theme="dark"] pre, [data-theme="dark"] code, [data-theme="dim"] pre, [data-theme="dim"] code,
+[data-theme*="material-"] pre, [data-theme*="material-"] code, [data-theme="dark-teal"] pre, [data-theme="dark-teal"] code,
+[data-theme="dark-orange"] pre, [data-theme="dark-orange"] code, [data-theme="dark-pink"] pre, [data-theme="dark-pink"] code {
+    background-color: #0d1117 !important; border: 1px solid var(--border-color) !important; color: #79c0ff !important;
 }
-
+[data-theme="dark-red-astronomy"] pre, [data-theme="dark-red-astronomy"] code {
+    background-color: #0A0000 !important; border: 1px solid var(--border-color) !important; color: var(--text-primary) !important;
+}
 [data-theme="light"] pre, [data-theme="light"] code {
-    background-color: #F8F8F8 !important;
-    border: 1px solid var(--border-color) !important;
-    color: #333 !important;
+    background-color: #F8F8F8 !important; border: 1px solid var(--border-color) !important; color: #333 !important;
 }
-
-/* Blockquotes */
 body[data-theme] blockquote {
-    background-color: var(--tertiary-bg) !important;
-    border-left: 4px solid var(--accent-primary) !important;
+    background-color: var(--tertiary-bg) !important; border-left: 4px solid var(--accent-primary) !important;
     color: var(--text-secondary) !important;
 }
 
-/* Permalinks */
+/* Permalinks & Collapse Styles - Minimized */
 body[data-theme] .cn-post-id-display { color: var(--text-muted) !important; }
 body[data-theme] .cn-permalink-icon { color: var(--text-secondary) !important; }
 body[data-theme] .cn-permalink-container:hover .cn-post-id-display,
-body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
-    color: var(--accent-primary) !important;
-}
-
+body[data-theme] .cn-permalink-container:hover .cn-permalink-icon { color: var(--accent-primary) !important; }
 #cn-permalink-notification {
-    position: fixed; top: 10px; right: 10px;
-    padding: 10px 15px; border-radius: 4px;
-    z-index: 10000; opacity: 0;
-    transition: opacity 0.3s, transform 0.3s;
-    transform: translateX(100%);
+    position: fixed; top: 10px; right: 10px; padding: 10px 15px; border-radius: 4px;
+    z-index: 10000; opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateX(100%);
 }
-
 #cn-permalink-notification.show { opacity: 1; transform: translateX(0); }
-
-/* Collapsible Header */
 .ipsPageHeader.ipsBox.ipsResponsive_pull { cursor: pointer; }
 .cn-collapsed-header-content {
-    max-height: 0 !important; overflow: hidden !important;
-    opacity: 0 !important; margin: 0 !important; padding: 0 !important;
-    border: none !important;
+    max-height: 0 !important; overflow: hidden !important; opacity: 0 !important;
+    margin: 0 !important; padding: 0 !important; border: none !important;
     transition: max-height 0.4s ease, opacity 0.3s ease !important;
 }
-
-/* Sidebar Collapse */
-#ipsLayout_sidebar {
-    width: 300px; min-width: 300px;
-    transition: all 0.3s ease-in-out;
-}
-
+#ipsLayout_sidebar { width: 300px; min-width: 300px; transition: all 0.3s ease-in-out; }
 .cn-sidebar-collapsed #ipsLayout_sidebar {
-    width: 0 !important; min-width: 0 !important;
-    margin: 0 !important; padding: 0 !important;
-    overflow: hidden; border: none !important;
+    width: 0 !important; min-width: 0 !important; margin: 0 !important;
+    padding: 0 !important; overflow: hidden; border: none !important;
 }
-
 .cn-sidebar-collapsed #ipsLayout_sidebar > * { display: none !important; }
-
 .cn-sidebar-collapsed #ipsLayout_mainArea {
-    width: 100% !important; max-width: 100% !important;
-    flex-basis: 100% !important;
+    width: 100% !important; max-width: 100% !important; flex-basis: 100% !important;
 }
     `);
 
-    // Theme Configuration
-    const themeConfig = {
-        light: { icon: 'fa-sun-o', text: 'Light Mode' },
-        dark: { icon: 'fa-moon-o', text: 'Dark Mode' },
-        dim: { icon: 'fa-adjust', text: 'Dim Mode' },
-        'material-dark': { icon: 'fa-paint-brush', text: 'Material Blue' },
-        'material-emerald': { icon: 'fa-leaf', text: 'Material Emerald' },
-        'material-redline': { icon: 'fa-fire', text: 'Material Redline' },
-        // New Dark base themes with unique accents
-        'dark-teal': { icon: 'fa-tint', text: 'Dark Teal' },
-        'dark-orange': { icon: 'fa-flask', text: 'Dark Orange' },
-        'dark-pink': { icon: 'fa-heart', text: 'Dark Pink' }
-    };
+    // --- Utility Functions (Simplified) ---
+    const $ = (s, c = document) => c.querySelector(s);
+    const $$ = (s, c = document) => c.querySelectorAll(s);
 
-    // Utility Functions
-    const $ = (sel, ctx = document) => ctx.querySelector(sel);
-    const $$ = (sel, ctx = document) => ctx.querySelectorAll(sel);
-    
-    const showMessage = (msg) => {
-        let el = $('#cn-permalink-notification') || Object.assign(document.createElement('div'), {
-            id: 'cn-permalink-notification',
-            className: 'cn-permalink-success'
-        });
-        if (!el.parentNode) document.body.appendChild(el);
+    const showMsg = (msg) => {
+        let el = $('#cn-permalink-notification');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'cn-permalink-notification';
+            el.className = 'cn-permalink-success';
+            document.body.appendChild(el);
+        }
         el.textContent = msg;
         el.classList.add('show');
         setTimeout(() => el.classList.remove('show'), 2500);
@@ -392,7 +264,7 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
 
     const copyText = (text) => {
         (navigator.clipboard?.writeText(text) || Promise.reject())
-            .then(() => showMessage("Permalink copied!"))
+            .then(() => showMsg("Permalink copied!"))
             .catch(() => {
                 const ta = document.createElement("textarea");
                 ta.value = text;
@@ -400,60 +272,60 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
                 ta.select();
                 try {
                     document.execCommand('copy');
-                    showMessage("Permalink copied!");
+                    showMsg("Permalink copied!");
                 } catch {
-                    showMessage("Failed to copy.");
+                    showMsg("Failed to copy.");
                 }
                 document.body.removeChild(ta);
             });
     };
 
-    // Theme Toggle
+    // --- Theme Toggle ---
     const setupThemeToggle = (list) => {
-        let theme = localStorage.getItem(THEME_KEY) || 'material-dark'; // Changed default to material-dark
-        const li = document.createElement('li');
-        li.id = 'cn-theme-toggle-li';
-        
-        const updateUI = (t) => {
-            const cfg = themeConfig[t];
-            icon.className = `fa ${cfg.icon}`;
-            span.textContent = ` ${cfg.text}`;
-            btn.title = `Toggle Theme: ${cfg.text}`;
-        };
-        
+        let theme = localStorage.getItem(THEME_KEY) || 'material-dark';
+
         const apply = (t) => {
             document.documentElement.setAttribute('data-theme', t);
             document.body.setAttribute('data-theme', t);
             localStorage.setItem(THEME_KEY, t);
             updateUI(t);
         };
-        
-        const cfg = themeConfig[theme];
-        li.innerHTML = `<button class="ipsButton ipsButton_light ipsButton_medium" type="button" title="Toggle Theme: ${cfg.text}">
-            <i class="fa ${cfg.icon}"></i>
-            <span class="ipsResponsive_hidePhone"> ${cfg.text}</span>
+
+        const updateUI = (t) => {
+            const cfg = T_CFG[t];
+            icon.className = `fa ${cfg.i}`;
+            span.textContent = ` ${cfg.t}`;
+            btn.title = `Toggle Theme: ${cfg.t}`;
+        };
+
+        const li = document.createElement('li');
+        li.id = 'cn-theme-toggle-li';
+        const cfg = T_CFG[theme];
+        li.innerHTML = `<button class="ipsButton ipsButton_light ipsButton_medium" type="button" title="Toggle Theme: ${cfg.t}">
+            <i class="fa ${cfg.i}"></i>
+            <span class="ipsResponsive_hidePhone"> ${cfg.t}</span>
         </button>`;
-        
+
         list.prepend(li);
         const btn = $('button', li);
         const icon = $('i', li);
         const span = $('span', li);
-        
+
         btn.onclick = () => {
             const currentTheme = document.body.getAttribute('data-theme') || 'material-dark';
             const idx = THEMES.indexOf(currentTheme);
             apply(THEMES[(idx + 1) % THEMES.length]);
         };
-        
+
         apply(theme);
     };
 
-    // Permalinks
+    // --- Permalinks ---
     const addPermalinks = () => {
         $$('div[data-commentid]:not([data-permalink-injected])').forEach(wrap => {
             const id = wrap.getAttribute('data-commentid');
             const tools = $('.ipsComment_tools', wrap);
-            
+
             if (id && tools) {
                 const link = `${window.location.href.split('#')[0]}#findComment-${id}`;
                 const li = document.createElement('li');
@@ -461,98 +333,94 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
                     <span class="cn-post-id-display">#${id}</span>
                     <span class="cn-permalink-icon"><i class="fa fa-link"></i></span>
                 </a>`;
-                
-                $('a', li).onclick = (e) => {
-                    e.preventDefault();
-                    copyText(link);
-                };
-                
+                $('a', li).onclick = (e) => { e.preventDefault(); copyText(link); };
                 tools.prepend(li);
                 wrap.setAttribute('data-permalink-injected', 'true');
             }
         });
     };
 
-    // Collapsible Header
+    // --- Collapsible Header ---
     const setupHeader = () => {
         const header = $('.ipsPageHeader.ipsBox.ipsResponsive_pull');
         if (!header) return;
-        
-        const toolbar = $('ul.ipsToolList', header);
-        const elements = Array.from(header.children).filter(c => 
-            c !== toolbar && !c.querySelector('h1')
-        );
-        
+
+        // Use filter/map to get the elements to collapse
+        const elements = Array.from(header.children).filter(c => !c.querySelector('ul.ipsToolList, h1'));
         if (!elements.length) return;
-        
+
         const KEY = 'cnMainHeaderCollapsed';
-        let collapsed = localStorage.getItem(KEY) === 'true';
-        
+        const isCollapsed = localStorage.getItem(KEY) === 'true';
+
         const toggle = (state) => {
             elements.forEach(el => el.classList.toggle('cn-collapsed-header-content', state));
             localStorage.setItem(KEY, state);
         };
-        
-        toggle(collapsed);
-        
+
+        toggle(isCollapsed);
+
         header.onclick = (e) => {
             if (e.target.closest('a, button')) return;
+            // Check if any element is collapsed (simple check)
             const state = elements.some(el => el.classList.contains('cn-collapsed-header-content'));
             toggle(!state);
         };
     };
 
-    // Collapsible Sidebar
+    // --- Collapsible Sidebar & Init ---
     const setupSidebar = () => {
         const sidebar = $('#ipsLayout_sidebar');
+        // Check both possible list locations
         const list = $('.ipsToolList_horizontal') || $('.ipsPageHeader + .ipsClearfix .ipsToolList');
         const content = $('#ipsLayout_contentArea');
-        
+
         if (!sidebar || !list || !content) return;
-        
+
         setupThemeToggle(list);
-        
+
         const KEY = 'cnSidebarCollapsed';
-        let collapsed = localStorage.getItem(KEY) === 'true';
-        
+        const isCollapsed = localStorage.getItem(KEY) === 'true';
+
         const li = document.createElement('li');
         li.id = 'cn-sidebar-toggle-li';
-        li.innerHTML = `<button class="ipsButton ipsButton_important ipsButton_medium" type="button" title="Toggle Sidebar">
-            <i class="fa ${collapsed ? 'fa-chevron-left' : 'fa-chevron-right'}"></i>
-            <span class="ipsResponsive_hidePhone"> ${collapsed ? 'Expand' : 'Collapse'} Sidebar</span>
-        </button>`;
-        
-        const themeBtn = $('#cn-theme-toggle-li', list);
-        themeBtn ? list.insertBefore(li, themeBtn.nextSibling) : list.prepend(li);
-        
-        const btn = $('button', li);
-        const icon = $('i', li);
-        const span = $('span', li);
-        
+
         const toggle = (state) => {
             content.classList.toggle('cn-sidebar-collapsed', state);
             icon.className = `fa ${state ? 'fa-chevron-left' : 'fa-chevron-right'}`;
             span.textContent = ` ${state ? 'Expand' : 'Collapse'} Sidebar`;
             localStorage.setItem(KEY, state);
         };
-        
-        toggle(collapsed);
+
+        // Initialize button content
+        li.innerHTML = `<button class="ipsButton ipsButton_important ipsButton_medium" type="button" title="Toggle Sidebar">
+            <i class="fa ${isCollapsed ? 'fa-chevron-left' : 'fa-chevron-right'}"></i>
+            <span class="ipsResponsive_hidePhone"> ${isCollapsed ? 'Expand' : 'Collapse'} Sidebar</span>
+        </button>`;
+
+        const themeBtn = $('#cn-theme-toggle-li', list);
+        // Insert sidebar toggle next to theme toggle or prepend
+        themeBtn ? list.insertBefore(li, themeBtn.nextSibling) : list.prepend(li);
+
+        const btn = $('button', li);
+        const icon = $('i', li);
+        const span = $('span', li);
+
+        toggle(isCollapsed);
         btn.onclick = () => toggle(!content.classList.contains('cn-sidebar-collapsed'));
     };
 
-    // Initialize
     const init = () => {
         addPermalinks();
         setupHeader();
         setupSidebar();
-        
+
+        // Single MutationObserver for Permalinks on dynamic content
         const observer = new MutationObserver(addPermalinks);
         const target = $('#ipsLayout_mainArea') || $('#ipsLayout_contentArea') || document.body;
         observer.observe(target, { childList: true, subtree: true });
     };
 
-    document.readyState === 'loading' 
-        ? document.addEventListener('DOMContentLoaded', init)
-        : init();
+    // Load on DOMContentLoaded or immediately if ready
+    document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
 
 })();

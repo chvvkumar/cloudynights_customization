@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle
 // @namespace    http://tampermonkey.net/
-// @version      5.0
+// @version      5.1
 // @description  Optimized: Material Dark/Light/Dim themes with toggle, collapsible sidebar/header, permalinks. No FOUC.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
@@ -13,12 +13,14 @@
     'use strict';
 
     const THEME_KEY = 'cnThemeMode';
-    const THEMES = ['light', 'dark', 'dim', 'material-dark'];
+    // Added three new material themes for variation
+    const THEMES = ['light', 'dark', 'dim', 'material-dark', 'material-emerald', 'material-redline', 'material-purple'];
     
     // Apply theme immediately to prevent FOUC
     const applyInitialTheme = () => {
         const theme = localStorage.getItem(THEME_KEY);
-        const initial = THEMES.includes(theme) ? theme : 'dark';
+        // Default to 'material-dark' for a strong material starting point
+        const initial = THEMES.includes(theme) ? theme : 'material-dark'; 
         document.documentElement.setAttribute('data-theme', initial);
         
         const applyToBody = () => document.body?.setAttribute('data-theme', initial);
@@ -39,6 +41,7 @@
     --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px;
 }
 
+/* Original Dark */
 [data-theme="dark"] {
     --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
     --accent-primary: #D9E2E8; --accent-secondary: #B5C8D3;
@@ -48,6 +51,7 @@
     --success: #10b981; --warning: #f59e0b; --error: #ef4444;
 }
 
+/* Original Material Dark (Deep Blue) */
 [data-theme="material-dark"] {
     --primary-bg: #121212; --secondary-bg: #1E1E1E; --tertiary-bg: #2C2C2C;
     --accent-primary: #3D5AFE; --accent-secondary: #8C9EFF;
@@ -57,6 +61,64 @@
     --success: #66BB6A; --warning: #FFCA28; --error: #EF5350;
 }
 
+/* NEW: Material Dark (Emerald) - Tech/Nature feel with green accent */
+[data-theme="material-emerald"] {
+    --primary-bg: #101515;
+    --secondary-bg: #1A2424;
+    --tertiary-bg: #283434;
+    --accent-primary: #00C853; /* Vibrant Emerald Green */
+    --accent-secondary: #69F0AE;
+    --text-primary: #E0E0E0;
+    --text-secondary: #A0A0A0;
+    --text-muted: #787878;
+    --border-color: #303A3A;
+    --border-light: #485A5A;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
+    --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
+    --success: #64DD17;
+    --warning: #FFC400;
+    --error: #FF5252;
+}
+
+/* NEW: Material Dark (Redline) - High contrast and energetic with red accent */
+[data-theme="material-redline"] {
+    --primary-bg: #121212;
+    --secondary-bg: #1E1E1E;
+    --tertiary-bg: #2C2C2C;
+    --accent-primary: #FF3D00; /* Deep Saturated Red/Orange */
+    --accent-secondary: #FF8A65;
+    --text-primary: #FFFFFF;
+    --text-secondary: #B0B0B0;
+    --text-muted: #888888;
+    --border-color: #383838;
+    --border-light: #505050;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
+    --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
+    --success: #66BB6A;
+    --warning: #FFCA28;
+    --error: #EF5350;
+}
+
+/* NEW: Material Dark (Midnight Purple) - Softer contrast with a purple accent */
+[data-theme="material-purple"] {
+    --primary-bg: #1C1B22; /* Softer, purplish dark background */
+    --secondary-bg: #25242D;
+    --tertiary-bg: #32313A;
+    --accent-primary: #7C4DFF; /* Mid-tone Deep Purple */
+    --accent-secondary: #B388FF;
+    --text-primary: #FFFFFF;
+    --text-secondary: #C0C0C0;
+    --text-muted: #A0A0A0;
+    --border-color: #403E4D;
+    --border-light: #555364;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 3px 6px rgba(0,0,0,0.5);
+    --success: #66BB6A;
+    --warning: #FFCA28;
+    --error: #EF5350;
+}
+
+/* Original Light */
 [data-theme="light"] {
     --primary-bg: #FFFFFF; --secondary-bg: #E8EDF1; --tertiary-bg: #E8EDF1;
     --accent-primary: #1976D2; --accent-secondary: #0D47A1;
@@ -66,6 +128,7 @@
     --success: #4CAF50; --warning: #FF9800; --error: #F44336;
 }
 
+/* Original Dim */
 [data-theme="dim"] {
     --primary-bg: #2E353B; --secondary-bg: #39444D; --tertiary-bg: #39444D;
     --accent-primary: #3399CC; --accent-secondary: #1A79B3;
@@ -101,6 +164,9 @@ body[data-theme] .ipsNavBar_active {
 
 [data-theme="dark"] .ipsNavBar_active { background-color: rgba(217,226,232,0.15) !important; }
 [data-theme="material-dark"] .ipsNavBar_active { background-color: rgba(61,90,254,0.15) !important; }
+[data-theme="material-emerald"] .ipsNavBar_active { background-color: rgba(0,200,83,0.15) !important; }
+[data-theme="material-redline"] .ipsNavBar_active { background-color: rgba(255,61,0,0.15) !important; }
+[data-theme="material-purple"] .ipsNavBar_active { background-color: rgba(124,77,255,0.15) !important; }
 [data-theme="dim"] .ipsNavBar_active { background-color: rgba(51,153,204,0.15) !important; }
 [data-theme="light"] .ipsNavBar_active { background-color: rgba(25,118,210,0.1) !important; }
 
@@ -210,7 +276,7 @@ body[data-theme] input:focus, body[data-theme] textarea:focus, body[data-theme] 
 
 /* Code */
 [data-theme="dark"] pre, [data-theme="dark"] code, [data-theme="dim"] pre, 
-[data-theme="dim"] code, [data-theme="material-dark"] pre, [data-theme="material-dark"] code {
+[data-theme="dim"] code, [data-theme*="material-"] pre, [data-theme*="material-"] code {
     background-color: #0d1117 !important;
     border: 1px solid var(--border-color) !important;
     color: #79c0ff !important;
@@ -281,7 +347,10 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
         light: { icon: 'fa-sun-o', text: 'Light Mode' },
         dark: { icon: 'fa-moon-o', text: 'Dark Mode' },
         dim: { icon: 'fa-adjust', text: 'Dim Mode' },
-        'material-dark': { icon: 'fa-paint-brush', text: 'Material Dark' }
+        'material-dark': { icon: 'fa-paint-brush', text: 'Material Blue' }, // Renamed for clarity
+        'material-emerald': { icon: 'fa-leaf', text: 'Material Emerald' }, // New
+        'material-redline': { icon: 'fa-fire', text: 'Material Redline' },   // New
+        'material-purple': { icon: 'fa-magic', text: 'Material Purple' }   // New
     };
 
     // Utility Functions
@@ -319,7 +388,7 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
 
     // Theme Toggle
     const setupThemeToggle = (list) => {
-        let theme = localStorage.getItem(THEME_KEY) || 'dark';
+        let theme = localStorage.getItem(THEME_KEY) || 'material-dark'; // Changed default to material-dark
         const li = document.createElement('li');
         li.id = 'cn-theme-toggle-li';
         
@@ -349,7 +418,8 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
         const span = $('span', li);
         
         btn.onclick = () => {
-            const idx = THEMES.indexOf(document.body.getAttribute('data-theme') || 'dark');
+            const currentTheme = document.body.getAttribute('data-theme') || 'material-dark';
+            const idx = THEMES.indexOf(currentTheme);
             apply(THEMES[(idx + 1) % THEMES.length]);
         };
         

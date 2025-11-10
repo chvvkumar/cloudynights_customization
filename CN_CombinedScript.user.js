@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle
 // @namespace    http://tampermonkey.net/
-// @version      4.5
-// @description  Applies a Material Dark/Light/Dim/Material-Dark theme with toggle, makes the right sidebar collapsible, expands main content, and adds permalinks. Adds collapsible main content headers.
+// @version      5.0
+// @description  Applies a Material Dark/Light/Dim/Material-Dark theme with toggle, makes the right sidebar collapsible (hides all widgets including Top Posters), expands main content, and adds permalinks. Adds collapsible main content headers.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
 // @grant        GM_addStyle
@@ -336,7 +336,12 @@ body[data-theme] .cn-permalink-container:hover .cn-post-id-display, body[data-th
 #ipsLayout_mainArea { flex-basis: 0; flex-grow: 1; min-width: 0; transition: all 0.3s ease-in-out; }
 .ipsLayout_contentArea { display: flex; flex-direction: row; align-items: flex-start; }
 .cn-sidebar-collapsed #ipsLayout_sidebar { width: 0 !important; min-width: 0 !important; margin: 0 !important; overflow: hidden; padding: 0 !important; border: none !important; }
-.cn-sidebar-collapsed #ipsLayout_sidebar > .ipsBox, .cn-sidebar-collapsed #ipsLayout_sidebar > .cWidgetContainer { display: none; }
+.cn-sidebar-collapsed #ipsLayout_sidebar > .ipsBox, 
+.cn-sidebar-collapsed #ipsLayout_sidebar > .cWidgetContainer,
+.cn-sidebar-collapsed #ipsLayout_sidebar > .cWidget,
+.cn-sidebar-collapsed #ipsLayout_sidebar .ipsWidget,
+.cn-sidebar-collapsed #ipsLayout_sidebar [data-widget],
+.cn-sidebar-collapsed #ipsLayout_sidebar > * { display: none !important; }
 .cn-sidebar-collapsed #ipsLayout_mainArea { width: 100% !important; max-width: 100% !important; margin-right: 0 !important; flex-basis: 100% !important; float: none !important; }
 .cn-sidebar-collapsed #ipsLayout_contentWrapper { padding-right: 0 !important; width: 100% !important; float: none !important; }
 .cn-sidebar-collapsed #ipsLayout_body, .cn-sidebar-collapsed .ipsLayout_container { max-width: none !important; width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; }

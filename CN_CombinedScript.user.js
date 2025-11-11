@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle (Minified)
 // @namespace    http://tampermonkey.net/
-// @version      6.1.min
+// @version      6.5
 // @description  Optimized: Material Dark/Light/Dim themes with toggle, collapsible sidebar/header, permalinks. No FOUC.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*

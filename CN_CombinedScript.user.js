@@ -287,12 +287,32 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
     width: 100% !important; max-width: 100% !important; flex-basis: 100% !important;
 }
 /* Style the new selector to blend with the UI */
-#cn-theme-selector-li select {
-    /* Hide default select arrow in favor of the fa-adjust icon */
+/* Updated to target the select element inside the button wrapper */
+#cn-theme-selector-li button select {
+    /* Completely hide the select element's appearance */
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-image: none !important;
+    background: transparent !important;
+    border: none !important;
+    color: transparent !important;
+    position: absolute; /* Allows it to cover the whole button area */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    z-index: 2; /* Ensure it is on top for clicks */
+}
+
+#cn-theme-selector-li button {
+    position: relative; /* Context for absolute positioning of select */
+    display: flex;
+    align-items: center;
+    /* Ensure the button itself uses the default 6px 12px padding for correct height */
+    padding: 6px 12px !important;
 }
     `);
 
@@ -335,18 +355,22 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
     const setupThemeSelector = (list) => {
         let theme = localStorage.getItem(THEME_KEY) || 'material-gold';
 
+        // Element for the current icon display
         const iconEl = document.createElement('i');
         iconEl.style.marginRight = '8px';
         iconEl.style.color = 'var(--text-primary)';
-        // Initialize the icon with the currently set theme's icon
-        iconEl.className = `fa ${T_CFG[theme].i}`;
+        // Element for the current theme name display
+        const textEl = document.createElement('span');
+        textEl.style.color = 'var(--text-primary)';
+        textEl.className = 'ipsResponsive_hidePhone';
 
         const apply = (t) => {
             document.documentElement.setAttribute('data-theme', t);
             document.body.setAttribute('data-theme', t);
             localStorage.setItem(THEME_KEY, t);
-            // Update the icon to reflect the new theme
+            // Update the visual elements (icon and text)
             iconEl.className = `fa ${T_CFG[t].i}`;
+            textEl.textContent = T_CFG[t].t;
         };
 
         const li = document.createElement('li');
@@ -370,20 +394,25 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
             optionsHtml += `</optgroup>`;
         }
 
-        // Create the select element for theme choosing
+        // Create the actual select element (functionality only)
         const selector = document.createElement('select');
         selector.id = 'cn-theme-selector';
-        selector.className = 'ipsButton ipsButton_light ipsButton_medium';
-        selector.style.cssText = 'background: transparent; border: none; padding: 0; margin: 0; color: var(--text-primary); cursor: pointer; height: 32px; font-size: 13px;';
         selector.innerHTML = optionsHtml;
-
-        const container = document.createElement('div');
-        container.style.cssText = 'display: flex; align-items: center; padding: 4px 8px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); height: 40px;';
-
-        container.appendChild(iconEl);
-        container.appendChild(selector);
-        li.appendChild(container);
-
+        
+        // Create the button that holds the visual elements and the hidden selector
+        const button = document.createElement('button');
+        // Apply the standard IPS button classes for guaranteed sizing and background/border
+        button.className = 'ipsButton ipsButton_light ipsButton_medium';
+        button.type = 'button';
+        // Inline styles set in the GM_addStyle block now: position: relative, display: flex, align-items: center, padding: 6px 12px !important;
+        
+        // Add visual elements first
+        button.appendChild(iconEl);
+        button.appendChild(textEl);
+        // Add functional element (the actual selector) last, positioned absolutely on top
+        button.appendChild(selector);
+        
+        li.appendChild(button);
         list.prepend(li);
 
         selector.onchange = (e) => {
@@ -467,7 +496,7 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
 
         // Initialize button content
         li.innerHTML = `<button class="ipsButton ipsButton_important ipsButton_medium" type="button" title="Toggle Sidebar">
-            <i class="fa ${isCollapsed ? 'fa-chevron-left' : 'fa-chevron-right'}</i>
+            <i class="fa ${isCollapsed ? 'fa-chevron-left' : 'fa-chevron-right'}"></i>
             <span class="ipsResponsive_hidePhone"> ${isCollapsed ? 'Expand' : 'Collapse'} Sidebar</span>
         </button>`;
 

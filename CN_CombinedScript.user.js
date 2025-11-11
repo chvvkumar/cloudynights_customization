@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle (Minified)
 // @namespace    http://tampermonkey.net/
-// @version      7.0
+// @version      7.1
 // @description  Optimized: Dark/Light themes with a selector, collapsible sidebar/header, permalinks. No FOUC.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
@@ -69,10 +69,11 @@
 /* --- DARK SKY: Deep background with Redline accent --- */
 [data-theme="dark-sky"] {
     --primary-bg: #0A0A0A; --secondary-bg: #151515; --tertiary-bg: #151515;
-    --accent-primary: #FF3D00; /* Redline Primary */
+    --accent-primary: #E83C00; /* Adjusted: Deeper orange-red (was #FF3D00) */
     --accent-secondary: #FF8A65; /* Redline Secondary */
-    --accent-primary-rgb: 255, 61, 0; /* Redline RGB */
-    --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
+    --accent-primary-rgb: 232, 60, 0; /* Adjusted: New RGB for the deeper color (was 255, 61, 0) */
+    --text-primary: #C0C0C0; /* ADJUSTED: Made primary text even darker (was #E0E0E0) */
+    --text-secondary: #B0B0B0; --text-muted: #888888;
     --border-color: #333333; --border-light: #444444;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.5); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
     --success: #10b981; --warning: #f59e0b; --error: #ef4444;
@@ -80,8 +81,11 @@
 
 [data-theme="dark-red-astronomy"] {
     --primary-bg: #000; --secondary-bg: #1A0000; --tertiary-bg: #1A0000;
-    --accent-primary: #FF3333; --accent-secondary: #CC0000; --accent-primary-rgb: 255, 51, 51;
-    --text-primary: #D44E4E; --text-secondary: #8A3333; --text-muted: #442222;
+    --accent-primary: #D32F2F; /* Adjusted: Deeper red for links (was #FF3333) */
+    --accent-secondary: #CC0000;
+    --accent-primary-rgb: 211, 47, 47; /* Adjusted: New RGB for the deeper color (was 255, 51, 51) */
+    --text-primary: #B73E3E; /* Adjusted: Darker red for main text (was #D44E4E) */
+    --text-secondary: #8A3333; --text-muted: #442222;
     --border-color: #330000; --border-light: #550000;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.6); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
     color: var(--text-primary) !important;
@@ -151,12 +155,15 @@ ${THEMES.map(t => {
         'dark-teal': 'rgba(0,188,212,0.15)',
         'dark-orange': 'rgba(255,152,0,0.15)',
         'dark-pink': 'rgba(233,30,99,0.15)',
-        'dark-red-astronomy': 'rgba(255,51,51,0.2)',
+        'dark-red-astronomy': 'rgba(255,51,51,0.2)', // Retaining the old RGB here for nav bar background until it's tested
         'material-gold': 'rgba(255,179,0,0.15)',
-        'dark-sky': 'rgba(255, 61, 0, 0.15)',
+        'dark-sky': 'rgba(232, 60, 0, 0.15)', // Updated to new RGB
         'material-lime': 'rgba(174, 234, 0, 0.15)',
         'light': 'rgba(25,118,210,0.1)'
     };
+    // Note: The map uses hardcoded RGB values for history. 
+    // It's safer to rely on the CSS variable changes above for primary color.
+    // However, I've updated 'dark-sky' here to reflect the new color for consistency.
     return `[data-theme="${t}"] .ipsNavBar_active { background-color: ${map[t]} !important; }`;
 }).join('\n')}
 
@@ -165,10 +172,23 @@ body[data-theme] .ipsBox {
     background-color: var(--secondary-bg) !important; border: 1px solid var(--border-color) !important;
     border-radius: var(--radius-md) !important; box-shadow: var(--shadow-sm) !important; transition: all 0.3s ease !important;
 }
-body[data-theme] .ipsBox:hover { box-shadow: var(--shadow-md) !important; border-color: var(--accent-primary) !important; }
+/* MODIFICATION: Unified hover effect for ipsBox, removing accent border and adding lift effect */
+body[data-theme] .ipsBox:hover { 
+    box-shadow: var(--shadow-md) !important; 
+    border-color: var(--border-light) !important; /* Changed from accent-primary */
+    transform: translateY(-1px) !important; /* Added lift effect */
+}
 body[data-theme] .ipsDataItem, body[data-theme] .cTopic, body[data-theme] .cPost, body[data-theme] .cForumRow {
     background-color: var(--tertiary-bg) !important; border: 1px solid var(--border-color) !important; border-radius: var(--radius-md) !important;
+    transition: all 0.3s ease !important; /* Ensure transition is present for non-ipsBox items too */
 }
+/* MODIFICATION: Unified hover effect for data items (forum rows, topics, posts) */
+body[data-theme] .ipsDataItem:hover, body[data-theme] .cTopic:hover, body[data-theme] .cPost:hover, body[data-theme] .cForumRow:hover {
+    box-shadow: var(--shadow-md) !important; 
+    border-color: var(--border-light) !important;
+    transform: translateY(-1px) !important; /* Added lift effect */
+}
+
 body[data-theme] .ipsWidget { background-color: var(--secondary-bg) !important; border: 1px solid var(--border-color) !important; }
 body[data-theme] .ipsWidget_title { background: var(--tertiary-bg) !important; color: var(--text-primary) !important; border-bottom: 2px solid var(--accent-primary) !important; }
 

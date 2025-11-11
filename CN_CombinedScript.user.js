@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar, Permalinks & Theme Toggle (Minified)
 // @namespace    http://tampermonkey.net/
-// @version      6.5
-// @description  Optimized: Material Dark/Light/Dim themes with toggle, collapsible sidebar/header, permalinks. No FOUC.
+// @version      7.0
+// @description  Optimized: Dark/Light themes with a selector, collapsible sidebar/header, permalinks. No FOUC.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
 // @grant        GM_addStyle
@@ -13,22 +13,26 @@
     'use strict';
 
     const THEME_KEY = 'cnThemeMode';
-    // Streamlined theme array - order preserved
-    const THEMES = ['light', 'dark', 'dark-teal', 'dark-orange', 'dark-pink', 'dark-red-astronomy', 'dim', 'material-dark', 'material-emerald', 'material-redline'];
+    // Organized theme list for clarity and FOUC prevention
+    const THEMES = ['light', 'dark', 'material-gold', 'material-emerald', 'material-lime', 'material-redline', 'dark-teal', 'dark-orange', 'dark-pink', 'dark-sky', 'dark-red-astronomy'];
 
-    // Theme cycle config (Minified)
+    // Theme config
     const T_CFG = {
-        light: { i: 'fa-sun-o', t: 'Light Mode' }, dark: { i: 'fa-moon-o', t: 'Dark Mode' }, dim: { i: 'fa-adjust', t: 'Dim Mode' },
-        'material-dark': { i: 'fa-paint-brush', t: 'Material Blue' }, 'material-emerald': { i: 'fa-leaf', t: 'Material Emerald' },
+        light: { i: 'fa-sun-o', t: 'Light Mode' }, dark: { i: 'fa-moon-o', t: 'Dark Slate' },
+        'material-emerald': { i: 'fa-leaf', t: 'Material Emerald' },
         'material-redline': { i: 'fa-fire', t: 'Material Redline' }, 'dark-teal': { i: 'fa-tint', t: 'Dark Teal' },
         'dark-orange': { i: 'fa-flask', t: 'Dark Orange' }, 'dark-pink': { i: 'fa-heart', t: 'Dark Pink' },
-        'dark-red-astronomy': { i: 'fa-binoculars', t: 'Astronomy Red' }
+        'dark-red-astronomy': { i: 'fa-globe', t: 'Astronomy' }, // Updated icon to fa-globe and name to 'Astronomy'
+        'material-gold': { i: 'fa-trophy', t: 'Material Gold' },
+        'dark-sky': { i: 'fa-star', t: 'Dark Sky' },
+        'material-lime': { i: 'fa-bug', t: 'Material Lime' }
     };
 
     // --- FOUC Prevention: Apply Initial Theme ---
     const applyInitialTheme = () => {
         const theme = localStorage.getItem(THEME_KEY);
-        const initial = THEMES.includes(theme) ? theme : 'material-dark';
+        // Fallback changed from 'material-dark' to 'material-gold'
+        const initial = THEMES.includes(theme) ? theme : 'material-gold';
         document.documentElement.setAttribute('data-theme', initial);
 
         const applyToBody = () => document.body?.setAttribute('data-theme', initial);
@@ -45,11 +49,11 @@
     };
     applyInitialTheme();
 
-    // Consolidated CSS (Reduced variable redundancy and merged similar selectors)
+    // Consolidated CSS
     GM_addStyle(`
 :root { --radius-sm: 4px; --radius-md: 8px; }
-/* Merged Theme Definitions - Reduced redundancy, kept unique values */
-[data-theme="dark"], [data-theme="dark-teal"], [data-theme="dark-orange"], [data-theme="dark-pink"] {
+/* Merged Theme Definitions - dark-sky moved to its own block below */
+[data-theme="dark"], [data-theme="dark-teal"], [data-theme="dark-orange"], [data-theme="dark-pink"], [data-theme="material-lime"] {
     --primary-bg: #1E1E1E; --secondary-bg: #2B2B2B; --tertiary-bg: #2B2B2B;
     --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
     --border-color: #444444; --border-light: #555555;
@@ -59,7 +63,20 @@
 [data-theme="dark-teal"] { --accent-primary: #00BCD4; --accent-secondary: #84FFFF; --accent-primary-rgb: 0, 188, 212; }
 [data-theme="dark-orange"] { --accent-primary: #FF9800; --accent-secondary: #FFCC80; --accent-primary-rgb: 255, 152, 0; }
 [data-theme="dark-pink"] { --accent-primary: #E91E63; --accent-secondary: #F48FB1; --accent-primary-rgb: 233, 30, 99; }
+[data-theme="material-lime"] { --accent-primary: #AEEA00; --accent-secondary: #E6EE9C; --accent-primary-rgb: 174, 234, 0; }
 [data-theme="dark"] { --accent-primary: #D9E2E8; --accent-secondary: #B5C8D3; --accent-primary-rgb: 217, 226, 232; }
+
+/* --- DARK SKY: Deep background with Redline accent --- */
+[data-theme="dark-sky"] {
+    --primary-bg: #0A0A0A; --secondary-bg: #151515; --tertiary-bg: #151515;
+    --accent-primary: #FF3D00; /* Redline Primary */
+    --accent-secondary: #FF8A65; /* Redline Secondary */
+    --accent-primary-rgb: 255, 61, 0; /* Redline RGB */
+    --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
+    --border-color: #333333; --border-light: #444444;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
+    --success: #10b981; --warning: #f59e0b; --error: #ef4444;
+}
 
 [data-theme="dark-red-astronomy"] {
     --primary-bg: #000; --secondary-bg: #1A0000; --tertiary-bg: #1A0000;
@@ -67,19 +84,18 @@
     --text-primary: #D44E4E; --text-secondary: #8A3333; --text-muted: #442222;
     --border-color: #330000; --border-light: #550000;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.6); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
-    --success: #8A3333; --warning: #CC0000; --error: #FF3333;
     color: var(--text-primary) !important;
 }
 
-[data-theme="material-dark"], [data-theme="material-redline"] {
+/* Material Redline (Now defined separately from removed 'material-dark') */
+[data-theme="material-redline"] {
     --primary-bg: #121212; --secondary-bg: #1E1E1E; --tertiary-bg: #2C2C2C;
     --text-primary: #FFFFFF; --text-secondary: #B0B0B0; --text-muted: #888888;
     --border-color: #383838; --border-light: #505050;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.5); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
     --success: #66BB6A; --warning: #FFCA28; --error: #EF5350;
+    --accent-primary: #FF3D00; --accent-secondary: #FF8A65; --accent-primary-rgb: 255, 61, 0;
 }
-[data-theme="material-dark"] { --accent-primary: #3D5AFE; --accent-secondary: #8C9EFF; --accent-primary-rgb: 61, 90, 254; }
-[data-theme="material-redline"] { --accent-primary: #FF3D00; --accent-secondary: #FF8A65; --accent-primary-rgb: 255, 61, 0; }
 
 [data-theme="material-emerald"] {
     --primary-bg: #101515; --secondary-bg: #1A2424; --tertiary-bg: #283434;
@@ -90,6 +106,15 @@
     --success: #64DD17; --warning: #FFC400; --error: #FF5252;
 }
 
+[data-theme="material-gold"] {
+    --primary-bg: #181A1B; --secondary-bg: #222527; --tertiary-bg: #2C2F31;
+    --accent-primary: #FFB300; --accent-secondary: #FFD740; --accent-primary-rgb: 255, 179, 0;
+    --text-primary: #F0F0F0; --text-secondary: #B0B0B0; --text-muted: #888888;
+    --border-color: #404040; --border-light: #606060;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
+    --success: #66BB6A; --warning: #FFCA28; --error: #EF5350;
+}
+
 [data-theme="light"] {
     --primary-bg: #FFFFFF; --secondary-bg: #E8EDF1; --tertiary-bg: #E8EDF1;
     --accent-primary: #1976D2; --accent-secondary: #0D47A1; --accent-primary-rgb: 25, 118, 210;
@@ -97,15 +122,6 @@
     --border-color: #CFD8DC; --border-light: #B0BEC5;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.1); --shadow-md: 0 4px 8px rgba(0,0,0,0.1);
     --success: #4CAF50; --warning: #FF9800; --error: #F44336;
-}
-
-[data-theme="dim"] {
-    --primary-bg: #2E353B; --secondary-bg: #39444D; --tertiary-bg: #39444D;
-    --accent-primary: #3399CC; --accent-secondary: #1A79B3; --accent-primary-rgb: 51, 153, 204;
-    --text-primary: #B5C8D3; --text-secondary: #909BA6; --text-muted: #71806A;
-    --border-color: #4A5568; --border-light: #6A6D88;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3); --shadow-md: 0 3px 6px rgba(0,0,0,0.5);
-    --success: #68D391; --warning: #F6AD55; --error: #FC8181;
 }
 
 /* Consolidated Base Styles */
@@ -127,13 +143,18 @@ body[data-theme] .ipsNavBar_primary, body[data-theme] .ipsButtonBar {
 }
 body[data-theme] .ipsNavBar_active { border-bottom: 2px solid var(--accent-primary) !important; }
 ${THEMES.map(t => {
-    // Generates active nav bar BG for each theme, simplified using primary accent as base for opacity
-    const accent = getComputedStyle(document.documentElement).getPropertyValue(`--accent-primary`);
-    // Fallback/direct color mapping for best results (original script's method)
+    // Generates active nav bar BG for each theme
     const map = {
-        'dark': 'rgba(217,226,232,0.15)', 'material-dark': 'rgba(61,90,254,0.15)', 'material-emerald': 'rgba(0,200,83,0.15)',
-        'material-redline': 'rgba(255,61,0,0.15)', 'dark-teal': 'rgba(0,188,212,0.15)', 'dark-orange': 'rgba(255,152,0,0.15)',
-        'dark-pink': 'rgba(233,30,99,0.15)', 'dark-red-astronomy': 'rgba(255,51,51,0.2)', 'dim': 'rgba(51,153,204,0.15)',
+        'dark': 'rgba(217,226,232,0.15)',
+        'material-emerald': 'rgba(0,200,83,0.15)',
+        'material-redline': 'rgba(255,61,0,0.15)',
+        'dark-teal': 'rgba(0,188,212,0.15)',
+        'dark-orange': 'rgba(255,152,0,0.15)',
+        'dark-pink': 'rgba(233,30,99,0.15)',
+        'dark-red-astronomy': 'rgba(255,51,51,0.2)',
+        'material-gold': 'rgba(255,179,0,0.15)',
+        'dark-sky': 'rgba(255, 61, 0, 0.15)',
+        'material-lime': 'rgba(174, 234, 0, 0.15)',
         'light': 'rgba(25,118,210,0.1)'
     };
     return `[data-theme="${t}"] .ipsNavBar_active { background-color: ${map[t]} !important; }`;
@@ -209,9 +230,11 @@ body[data-theme] .ipsSearch button.ipsButton, body[data-theme] .cSearchFilter__t
 }
 
 /* Code & Blockquotes - Consolidated rules */
-[data-theme="dark"] pre, [data-theme="dark"] code, [data-theme="dim"] pre, [data-theme="dim"] code,
-[data-theme*="material-"] pre, [data-theme*="material-"] code, [data-theme="dark-teal"] pre, [data-theme="dark-teal"] code,
-[data-theme="dark-orange"] pre, [data-theme="dark-orange"] code, [data-theme="dark-pink"] pre, [data-theme="dark-pink"] code {
+[data-theme="dark"] pre, [data-theme="dark"] code,
+[data-theme="material-gold"] pre, [data-theme="material-gold"] code, [data-theme="material-emerald"] pre, [data-theme="material-emerald"] code,
+[data-theme="material-redline"] pre, [data-theme="material-redline"] code, [data-theme="dark-teal"] pre, [data-theme="dark-teal"] code,
+[data-theme="dark-orange"] pre, [data-theme="dark-orange"] code, [data-theme="dark-pink"] pre, [data-theme="dark-pink"] code,
+[data-theme="dark-sky"] pre, [data-theme="dark-sky"] code, [data-theme="material-lime"] pre, [data-theme="material-lime"] code {
     background-color: #0d1117 !important; border: 1px solid var(--border-color) !important; color: #79c0ff !important;
 }
 [data-theme="dark-red-astronomy"] pre, [data-theme="dark-red-astronomy"] code {
@@ -263,6 +286,14 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
 .cn-sidebar-collapsed #ipsLayout_mainArea {
     width: 100% !important; max-width: 100% !important; flex-basis: 100% !important;
 }
+/* Style the new selector to blend with the UI */
+#cn-theme-selector-li select {
+    /* Hide default select arrow in favor of the fa-adjust icon */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none !important;
+}
     `);
 
     // --- Utility Functions (Simplified) ---
@@ -300,43 +331,66 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
             });
     };
 
-    // --- Theme Toggle ---
-    const setupThemeToggle = (list) => {
-        let theme = localStorage.getItem(THEME_KEY) || 'material-dark';
+    // --- Theme Selector (New Implementation) ---
+    const setupThemeSelector = (list) => {
+        let theme = localStorage.getItem(THEME_KEY) || 'material-gold';
+
+        const iconEl = document.createElement('i');
+        iconEl.style.marginRight = '8px';
+        iconEl.style.color = 'var(--text-primary)';
+        // Initialize the icon with the currently set theme's icon
+        iconEl.className = `fa ${T_CFG[theme].i}`;
 
         const apply = (t) => {
             document.documentElement.setAttribute('data-theme', t);
             document.body.setAttribute('data-theme', t);
             localStorage.setItem(THEME_KEY, t);
-            updateUI(t);
-        };
-
-        const updateUI = (t) => {
-            const cfg = T_CFG[t];
-            icon.className = `fa ${cfg.i}`;
-            span.textContent = ` ${cfg.t}`;
-            btn.title = `Toggle Theme: ${cfg.t}`;
+            // Update the icon to reflect the new theme
+            iconEl.className = `fa ${T_CFG[t].i}`;
         };
 
         const li = document.createElement('li');
-        li.id = 'cn-theme-toggle-li';
-        const cfg = T_CFG[theme];
-        li.innerHTML = `<button class="ipsButton ipsButton_light ipsButton_medium" type="button" title="Toggle Theme: ${cfg.t}">
-            <i class="fa ${cfg.i}"></i>
-            <span class="ipsResponsive_hidePhone"> ${cfg.t}</span>
-        </button>`;
+        li.id = 'cn-theme-selector-li';
 
-        list.prepend(li);
-        const btn = $('button', li);
-        const icon = $('i', li);
-        const span = $('span', li);
-
-        btn.onclick = () => {
-            const currentTheme = document.body.getAttribute('data-theme') || 'material-dark';
-            const idx = THEMES.indexOf(currentTheme);
-            apply(THEMES[(idx + 1) % THEMES.length]);
+        // Define groups for logical display in the selector
+        const themeGroups = {
+            'Light Theme': ['light'],
+            'Standard Dark': ['dark'],
+            'Material Accents': ['material-gold', 'material-emerald', 'material-lime', 'material-redline'],
+            'Color Accents': ['dark-teal', 'dark-orange', 'dark-pink'],
+            'Observing Mode': ['dark-sky', 'dark-red-astronomy']
         };
 
+        let optionsHtml = '';
+        for (const [groupName, themeKeys] of Object.entries(themeGroups)) {
+            optionsHtml += `<optgroup label="${groupName}">`;
+            optionsHtml += themeKeys.map(key =>
+                `<option value="${key}" ${key === theme ? 'selected' : ''}>${T_CFG[key].t}</option>`
+            ).join('');
+            optionsHtml += `</optgroup>`;
+        }
+
+        // Create the select element for theme choosing
+        const selector = document.createElement('select');
+        selector.id = 'cn-theme-selector';
+        selector.className = 'ipsButton ipsButton_light ipsButton_medium';
+        selector.style.cssText = 'background: transparent; border: none; padding: 0; margin: 0; color: var(--text-primary); cursor: pointer; height: 32px; font-size: 13px;';
+        selector.innerHTML = optionsHtml;
+
+        const container = document.createElement('div');
+        container.style.cssText = 'display: flex; align-items: center; padding: 4px 8px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); height: 40px;';
+
+        container.appendChild(iconEl);
+        container.appendChild(selector);
+        li.appendChild(container);
+
+        list.prepend(li);
+
+        selector.onchange = (e) => {
+            apply(e.target.value);
+        };
+
+        // Ensure the correct theme is applied on load
         apply(theme);
     };
 
@@ -380,7 +434,7 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
         toggle(isCollapsed);
 
         header.onclick = (e) => {
-            if (e.target.closest('a, button')) return;
+            if (e.target.closest('a, button, select')) return;
             // Check if any element is collapsed (simple check)
             const state = elements.some(el => el.classList.contains('cn-collapsed-header-content'));
             toggle(!state);
@@ -396,7 +450,7 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
 
         if (!sidebar || !list || !content) return;
 
-        setupThemeToggle(list);
+        setupThemeSelector(list);
 
         const KEY = 'cnSidebarCollapsed';
         const isCollapsed = localStorage.getItem(KEY) === 'true';
@@ -417,8 +471,8 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
             <span class="ipsResponsive_hidePhone"> ${isCollapsed ? 'Expand' : 'Collapse'} Sidebar</span>
         </button>`;
 
-        const themeBtn = $('#cn-theme-toggle-li', list);
-        // Insert sidebar toggle next to theme toggle or prepend
+        const themeBtn = $('#cn-theme-selector-li', list); // Look for the new selector element
+        // Insert sidebar toggle next to theme selector or prepend
         themeBtn ? list.insertBefore(li, themeBtn.nextSibling) : list.prepend(li);
 
         const btn = $('button', li);

@@ -56,14 +56,14 @@
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 3px 6px rgba(0,0,0,0.6);
     --success: #10b981; --warning: #f59e0b; --error: #ef4444;
 }
-[data-theme="dark-teal"] { --accent-primary: #00BCD4; --accent-secondary: #84FFFF; }
-[data-theme="dark-orange"] { --accent-primary: #FF9800; --accent-secondary: #FFCC80; }
-[data-theme="dark-pink"] { --accent-primary: #E91E63; --accent-secondary: #F48FB1; }
-[data-theme="dark"] { --accent-primary: #D9E2E8; --accent-secondary: #B5C8D3; }
+[data-theme="dark-teal"] { --accent-primary: #00BCD4; --accent-secondary: #84FFFF; --accent-primary-rgb: 0, 188, 212; }
+[data-theme="dark-orange"] { --accent-primary: #FF9800; --accent-secondary: #FFCC80; --accent-primary-rgb: 255, 152, 0; }
+[data-theme="dark-pink"] { --accent-primary: #E91E63; --accent-secondary: #F48FB1; --accent-primary-rgb: 233, 30, 99; }
+[data-theme="dark"] { --accent-primary: #D9E2E8; --accent-secondary: #B5C8D3; --accent-primary-rgb: 217, 226, 232; }
 
 [data-theme="dark-red-astronomy"] {
     --primary-bg: #000; --secondary-bg: #1A0000; --tertiary-bg: #1A0000;
-    --accent-primary: #FF3333; --accent-secondary: #CC0000;
+    --accent-primary: #FF3333; --accent-secondary: #CC0000; --accent-primary-rgb: 255, 51, 51;
     --text-primary: #D44E4E; --text-secondary: #8A3333; --text-muted: #442222;
     --border-color: #330000; --border-light: #550000;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.6); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
@@ -78,12 +78,12 @@
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.5); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
     --success: #66BB6A; --warning: #FFCA28; --error: #EF5350;
 }
-[data-theme="material-dark"] { --accent-primary: #3D5AFE; --accent-secondary: #8C9EFF; }
-[data-theme="material-redline"] { --accent-primary: #FF3D00; --accent-secondary: #FF8A65; }
+[data-theme="material-dark"] { --accent-primary: #3D5AFE; --accent-secondary: #8C9EFF; --accent-primary-rgb: 61, 90, 254; }
+[data-theme="material-redline"] { --accent-primary: #FF3D00; --accent-secondary: #FF8A65; --accent-primary-rgb: 255, 61, 0; }
 
 [data-theme="material-emerald"] {
     --primary-bg: #101515; --secondary-bg: #1A2424; --tertiary-bg: #283434;
-    --accent-primary: #00C853; --accent-secondary: #69F0AE;
+    --accent-primary: #00C853; --accent-secondary: #69F0AE; --accent-primary-rgb: 0, 200, 83;
     --text-primary: #E0E0E0; --text-secondary: #A0A0A0; --text-muted: #787878;
     --border-color: #303A3A; --border-light: #485A5A;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.5); --shadow-md: 0 3px 6px rgba(0,0,0,0.8);
@@ -92,7 +92,7 @@
 
 [data-theme="light"] {
     --primary-bg: #FFFFFF; --secondary-bg: #E8EDF1; --tertiary-bg: #E8EDF1;
-    --accent-primary: #1976D2; --accent-secondary: #0D47A1;
+    --accent-primary: #1976D2; --accent-secondary: #0D47A1; --accent-primary-rgb: 25, 118, 210;
     --text-primary: #263238; --text-secondary: #546E7A; --text-muted: #90A4AE;
     --border-color: #CFD8DC; --border-light: #B0BEC5;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.1); --shadow-md: 0 4px 8px rgba(0,0,0,0.1);
@@ -101,7 +101,7 @@
 
 [data-theme="dim"] {
     --primary-bg: #2E353B; --secondary-bg: #39444D; --tertiary-bg: #39444D;
-    --accent-primary: #3399CC; --accent-secondary: #1A79B3;
+    --accent-primary: #3399CC; --accent-secondary: #1A79B3; --accent-primary-rgb: 51, 153, 204;
     --text-primary: #B5C8D3; --text-secondary: #909BA6; --text-muted: #71806A;
     --border-color: #4A5568; --border-light: #6A6D88;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.3); --shadow-md: 0 3px 6px rgba(0,0,0,0.5);
@@ -157,10 +157,17 @@ body[data-theme] .ipsType_sectionTitle, body[data-theme] .ipsType_pageTitle, bod
     color: var(--text-primary) !important; font-weight: 700 !important;
 }
 body[data-theme] .ipsDataItem_title { font-weight: 600 !important; transition: color 0.2s ease !important; }
+
+/* --- MODIFICATION 1: Remove underline on hover for all links and target buttons --- */
 body[data-theme] .ipsDataItem_title:hover, body[data-theme] a {
     color: var(--accent-primary) !important; text-decoration: none !important; transition: all 0.2s ease !important;
 }
-body[data-theme] a:hover { color: var(--accent-secondary) !important; text-decoration: underline !important; }
+body[data-theme] a:hover { color: var(--accent-secondary) !important; text-decoration: none !important; }
+/* Ensure topic action buttons (Reply to this topic, Start new topic) also lose underline if they are simple <a> tags */
+body[data-theme] .ipsActionBar_aux .ipsButton:hover,
+body[data-theme] .ipsActionBar_aux .ipsButton a:hover {
+    text-decoration: none !important;
+}
 
 /* Button Styles - Combined and simplified */
 body[data-theme] .ipsButton, body[data-theme] .ipsButton_light, body[data-theme] .ipsButton_alternate,
@@ -221,8 +228,21 @@ body[data-theme] blockquote {
 /* Permalinks & Collapse Styles - Minimized */
 body[data-theme] .cn-post-id-display { color: var(--text-muted) !important; }
 body[data-theme] .cn-permalink-icon { color: var(--text-secondary) !important; }
+
+/* --- MODIFICATION 2: Apply text-shadow glow directly to text elements --- */
+body[data-theme] .cn-permalink-container:hover {
+    /* REMOVE RECTANGULAR BACKGROUND/BOX-SHADOW */
+    background-color: transparent;
+    border-radius: initial;
+    box-shadow: none;
+}
 body[data-theme] .cn-permalink-container:hover .cn-post-id-display,
-body[data-theme] .cn-permalink-container:hover .cn-permalink-icon { color: var(--accent-primary) !important; }
+body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
+    /* ADD TEXT-SHADOW GLOW */
+    color: var(--accent-primary) !important;
+    text-shadow: 0 0 5px rgba(var(--accent-primary-rgb), 0.7); /* Subtle Text Glow */
+}
+
 #cn-permalink-notification {
     position: fixed; top: 10px; right: 10px; padding: 10px 15px; border-radius: 4px;
     z-index: 10000; opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateX(100%);
@@ -393,7 +413,7 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon { color: var(-
 
         // Initialize button content
         li.innerHTML = `<button class="ipsButton ipsButton_important ipsButton_medium" type="button" title="Toggle Sidebar">
-            <i class="fa ${isCollapsed ? 'fa-chevron-left' : 'fa-chevron-right'}"></i>
+            <i class="fa ${isCollapsed ? 'fa-chevron-left' : 'fa-chevron-right'}</i>
             <span class="ipsResponsive_hidePhone"> ${isCollapsed ? 'Expand' : 'Collapse'} Sidebar</span>
         </button>`;
 

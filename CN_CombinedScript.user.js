@@ -347,11 +347,21 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
     text-shadow: 0 0 5px rgba(var(--accent-primary-rgb), 0.7); /* Subtle Text Glow */
 }
 
-/* Permalink Copy Notification */
+/* Permalink Copy Notification: MOVED TO BOTTOM RIGHT AND ENHANCED VISIBILITY */
 #cn-permalink-notification {
-    position: fixed; top: 10px; right: 10px; padding: 10px 15px; border-radius: 4px;
-    z-index: 10000; opacity: 0; transition: opacity 0.3s, transform 0.3s;
-    transform: translateX(100%); /* Start off-screen */
+    position: fixed;
+    bottom: 20px; /* Anchored to the bottom */
+    right: 20px; /* Anchored to the right */
+    padding: 12px 20px; /* Increased padding */
+    border-radius: 6px; /* Slightly larger radius */
+    z-index: 10000;
+    opacity: 0;
+    background-color: var(--secondary-bg); /* Use theme background */
+    color: var(--text-primary); /* Use theme text color */
+    border: 2px solid var(--accent-primary); /* Bold accent border for visibility */
+    box-shadow: var(--shadow-md); /* Stronger shadow */
+    transition: opacity 0.3s, transform 0.3s;
+    transform: translateX(120%); /* Start further off-screen for animation */
 }
 #cn-permalink-notification.show { opacity: 1; transform: translateX(0); }
 
@@ -413,7 +423,7 @@ body[data-theme] .cn-permalink-container:hover .cn-permalink-icon {
     const $$ = (s, c = document) => c.querySelectorAll(s);
 
     /**
-     * Displays a temporary notification message in the top-right corner.
+     * Displays a temporary notification message in the bottom-right corner.
      * @param {string} msg - The message to display (e.g., "Permalink copied!").
      */
     const showMsg = (msg) => {

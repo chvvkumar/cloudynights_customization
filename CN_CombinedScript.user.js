@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Cloudy Nights Collapsible Sidebar & Theme Toggle (Optimized)
+// @name         Cloudy Nights Collapsible Sidebar & Theming
 // @namespace    http://tampermonkey.net/
 // @version      8.0
 // @description  Optimized: Dark/Light themes, collapsible sidebar/header. Enhanced performance, smaller size, cleaner code.

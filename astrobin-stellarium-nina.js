@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AstroBin to Stellarium & NINA
 // @namespace    http://tampermonkey.net/
-// @version      12.6
+// @version      13.0
 // @description  Adds Stellarium focus icons and NINA framing buttons to AstroBin.
 // @author       Dev
 // @match        https://www.astrobin.com/*
@@ -17,6 +17,7 @@
 (function() {
     'use strict';
 
+    // --- CONFIGURATION ---
     const SETTINGS = {
         stellariumHost: GM_getValue('stellariumHost', "http://localhost:8090"),
         ninaHosts: JSON.parse(GM_getValue('ninaHosts', JSON.stringify([
@@ -28,25 +29,37 @@
 
     let pageCoordinates = null;
     const ninaBtnElements = [];
+    const processedElements = new Set(); // Track injected elements
 
-    // --- MAIN INJECTION LOGIC ---
+    // --- ICONS ---
+    // Using the icon from your previous versions to match the dark theme
+    const STELLARIUM_ICON_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAE/0lEQVR4nO2WXUxbZRzGudJrvewLNOe09Lulh7YwAqWlLYl8rCibibotAbOhYzgkkxldtjHGpuDU9ZzS8jG+RNxkw8R9mBjQ7MKwyZjMjC2b88LEG+fmhXMXZhEecw6Uz56O069p0n/yJISWl+f3/p/3/75paalKVapS9b8oSzpnZGQ+HyPzzTCEfcgQFnHWQ2Ftme+4Kf24IW7GlUrf0wxhAwxhZxNgGuFkJr5/zIT163QHn4rdvIz9Nh6msuUsDDoOWoaDxjovLcMJvzPLRUBkvm9igjATXzAe5g06FhobJyqtlQcR7QYXfeZFYjM4OLFu8zqTuHHNKpmtHbDJ/WvilJ3h10sGEA5szDu/fvMaGwdTQQBtH46Hi9JH0gEIeyO0wOnRKxg5PQkp3eAzL8W8xsaBKQri6s07KLX3rVxPxl6PAsD3V2gB3vznI5MJ3X2NjYPL24/pWz/j/WMru2Am7INoOhBTfLRm6QDbG74QAM6NX1uzXtIBhFEpEaDzk+8EgEvXbv8HACzSzDvKT+DKzE8CwMT0reQBiB1iqRHqGZ4QzPM6Ozb95Dsg5RDvPXRh0Tyvo21jsQOUqAfgUfXDreqHU9kLO92NDfIALOlc2N1f3Qn+ecDfsI8z39R8QRidIfP8z2WOvvgAhJNH3Y/hoe+RJw+sowvid4GjondFbEIKd5HFFWC5nFm9yM3siAiRbfELN6zZHoCrsl8Ylfy0mbqxtOvTCxoauQxrJpc8gJD4eDEk/D/m3zb8ri6PyWpdvXlH+I6Y+YQD8CrO6oMlwy86mfjnAX/D8hPm8o+3hVl/dmxaOLDhMp90AF4uVR+sGZEjFa3SkgHAy63iOyEehUjKIxxKSQc2kyCqSSd2kC7sJN2oI92JATj56aRonNZrOoew8JAObCOdglExJa0DIRUKBzuyeSfxo5p0LZrcQwfRlvMxOovacbL0CM54W/DlC4dwflNzrAB98Kh7JAF41AOwiYxYC2GxiQTmjad347DJh6GSoxh/eT+u72zCr00N+LO5Dn+3vo7ZtlqgfYd0gALVPhgVG5FFm0BTNCiKAk2poaELwCi3oDCrGSXq/siTSdm7dqwSdjEu+3V+nCptxQ+1e/HHgV2ArwH4rA041wNcPANMnAcmvwamxqUD8IYfJxWdA6tyO1yqoChEbubSjW0jHGpIF+ozuuEv+ACXat7Bg5Y6YPAwMH4KmBoTzIZTQgBCUlBqoSsudWANgENxYuGwcthKOtEg78Lwc0fwy55GoGcfcHFU1HTSABZBaDVylNtWdIR/O/EPwCoSwJvyToxubMFvB3ZjJtiKr4LHMPDeQbS/3Yi3al9F9UsvYsvmKlR5K1BZUQ632w2XywW325UcgKWOaGBRVsOlmu+Ik2axVfcuXit5BTXeMngWjLkkSDIAf2BjgZjvSBbMhnzY7UWSDbuWyekomZMMoKZtc7ECLJfRaER+fj6Ki4vXbdzhcIBhGGg1hlnJAAb6+d/jCRCSUqmEyWRCbm4uCgsL4XQ6Vxi22+2w2WzQ6/VQKBTC3+i1uXclA1jo+t00Nb9AokXTtCCxzxhdeb1kgPkueO8nA4CKIL02715atLVB1/ishnI8elLm1SrjI6Ox/JmoAUIQBsp7P1lxohZiY9Dm3YvZ/PKyKHa9oacq76oo2xxNqeJuWqFQQJWlmeMPrFlTVhc346lKVapSlZbI+hcf/WQs2PjpSAAAAABJRU5ErkJggg==";
 
+    // --- REGEX & HELPERS ---
+    // Combined the list you wanted (B, vdB, etc) with the standard ones
+    function getCatalogRegex() {
+        return /\b(M|NGC|IC|Mel|Cr|Col|Sharpless|Sh2|LBN|LDN|Abell|HD|SAO|HIP|B|vdB|UGC|PGC|ESO|Mrk)\s*-?\s*(\d+)\b/ig;
+    }
+
+    function getNormalizedObject(type, number) {
+        if (type.toUpperCase() === 'SHARPLESS') type = 'Sh2';
+        return `${type} ${number}`;
+    }
+
+    // --- NINA CONFIG & BUTTONS ---
     function injectConfigButton() {
-        if (document.getElementById('ab-nina-script-injected')) {
-            return;
-        }
+        if (document.getElementById('ab-nina-script-injected')) return;
 
         const uploadLi = document.querySelector('li.d-none.d-lg-block > a.upload-button');
-        if (!uploadLi) return;
-
+        if (!uploadLi) return; 
+        
         const uploadLiParent = uploadLi.parentElement;
-
-        // --- CONFIG BUTTON ---
+        
         const cogLi = document.createElement('li');
         cogLi.className = 'd-none d-lg-block';
         cogLi.id = 'ab-nina-script-injected';
-        cogLi.style.zIndex = "9999";
-
+        cogLi.style.zIndex = "9999"; 
+        
         const cogBtn = document.createElement('a');
         cogBtn.href = '#';
         cogBtn.title = 'Configure AstroBin Script';
@@ -57,10 +70,9 @@
             openConfigDialog();
         });
         cogLi.appendChild(cogBtn);
-
+        
         uploadLiParent.parentNode.insertBefore(cogLi, uploadLiParent.nextSibling);
 
-        // --- NINA BUTTONS ---
         const enabledHosts = SETTINGS.ninaHosts.filter(h => h.enabled && h.url);
         if (enabledHosts.length > 0) {
             const ninaLi = document.createElement('li');
@@ -70,15 +82,12 @@
             const ninaWrapper = document.createElement('div');
             ninaWrapper.style.cssText = 'display:flex; flex-direction:column; justify-content:center; align-items:center; gap:3px; height:100%; padding: 0 12px; border-left: 1px solid #444; margin-left: 5px; pointer-events: auto;';
 
-            // Coordinates Label
             const coordLabel = document.createElement('div');
             coordLabel.className = 'nina-coord-label';
             coordLabel.style.cssText = 'font-family: monospace; font-size:10px; color:#bac2de; white-space:nowrap; line-height:1; margin-bottom: 1px;';
             ninaWrapper.appendChild(coordLabel);
 
-            // Icons Container
             const iconsRow = document.createElement('div');
-            // Increased gap to 10px
             iconsRow.style.cssText = 'display:flex; align-items:center; gap:10px;';
 
             enabledHosts.forEach((host) => {
@@ -88,22 +97,21 @@
                 btn.style.cssText = 'cursor:pointer; text-decoration:none; position:relative; display:inline-block; z-index: 10001;';
 
                 const iconPill = document.createElement('div');
-                // Updated Style: Width 34px, Height 20px, Border-Radius 100px (Pill)
                 iconPill.style.cssText = 'display:flex; align-items:center; justify-content:center; width:34px; height:20px; border-radius:100px; background:#313244; border:1px solid #45475a; transition: all 0.2s; box-sizing: border-box;';
-
+                
                 const displayChar = host.name.charAt(0).toUpperCase();
                 iconPill.innerHTML = `
                     <span style="font-size:9px; font-weight:bold; color:#cdd6f4; z-index:1; letter-spacing: 0.5px;">${displayChar}</span>`;
-
+                
                 btn.appendChild(iconPill);
 
-                btn.addEventListener('mouseenter', () => {
-                    iconPill.style.borderColor = '#89b4fa';
-                    iconPill.style.background = '#45475a';
+                btn.addEventListener('mouseenter', () => { 
+                    iconPill.style.borderColor = '#89b4fa'; 
+                    iconPill.style.background = '#45475a'; 
                 });
-                btn.addEventListener('mouseleave', () => {
-                    iconPill.style.borderColor = '#45475a';
-                    iconPill.style.background = '#313244';
+                btn.addEventListener('mouseleave', () => { 
+                    iconPill.style.borderColor = '#45475a'; 
+                    iconPill.style.background = '#313244'; 
                 });
 
                 btn.addEventListener('click', (e) => {
@@ -118,7 +126,7 @@
 
             ninaWrapper.appendChild(iconsRow);
             ninaLi.appendChild(ninaWrapper);
-
+            
             cogLi.parentNode.insertBefore(ninaLi, cogLi);
             ninaBtnElements.push(ninaLi);
         }
@@ -132,7 +140,7 @@
                 coordHTML += ` <span style="color:#f5c2e7; margin-left:6px">ROT</span> ${pageCoordinates.orientation.toFixed(1)}°`;
             }
         }
-
+        
         ninaBtnElements.forEach(li => {
             if(document.body.contains(li)) {
                 li.style.display = 'list-item';
@@ -144,21 +152,19 @@
 
     function sendToNina(ra, dec, iconPill, hostUrl) {
         if (!iconPill || !iconPill.style) return;
-
         iconPill.style.opacity = '0.5';
         GM_xmlhttpRequest({
             method: "GET",
             url: `${hostUrl}/v2/api/framing/set-coordinates?RAangle=${ra}&DecAngle=${dec}`,
             onload: (res) => {
-                const color = res.status === 200 ? '#a6e3a1' : '#f38ba8';
+                const color = res.status === 200 ? '#a6e3a1' : '#f38ba8'; 
                 iconPill.style.borderColor = color;
                 iconPill.style.opacity = '1';
-
                 if (res.status === 200 && pageCoordinates?.orientation !== null) {
                     GM_xmlhttpRequest({
                         method: "GET",
                         url: `${hostUrl}/v2/api/framing/set-rotation?rotation=${pageCoordinates.orientation}`,
-                        onload: () => { /* maintain green */ }
+                        onload: () => { }
                     });
                 }
                 setTimeout(() => { iconPill.style.borderColor = '#45475a'; }, 3000);
@@ -175,10 +181,8 @@
     function openConfigDialog() {
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
-
         const dialog = document.createElement('div');
         dialog.style.cssText = 'background:#1e1e2e;color:#cdd6f4;border-radius:12px;padding:24px;min-width:420px;font-family: system-ui, -apple-system, sans-serif;box-shadow:0 20px 50px rgba(0,0,0,0.5); border: 1px solid #313244;';
-
         dialog.innerHTML = `
             <h3 style="margin:0 0 20px;font-size:18px;color:#89b4fa;font-weight:600;">AstroBin Script Settings</h3>
             <div style="margin-bottom:20px;">
@@ -198,7 +202,6 @@
                 <button id="cfg-save" style="padding:8px 24px;background:#89b4fa;color:#11111b;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px;">Save Settings</button>
             </div>
         `;
-
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
         dialog.querySelector('#cfg-cancel').addEventListener('click', () => overlay.remove());
@@ -219,15 +222,7 @@
         });
     }
 
-    // --- STELLARIUM & COORDINATE SCANNERS ---
-    const catalogRegex = /\b(M|NGC|IC|Mel|Cr|Col|Sharpless|Sh2|LBN|LDN|Abell|HD|SAO|HIP)\s*-?\s*(\d+)\b/ig;
-    const processedElements = new Set();
-    const STELLARIUM_ICON_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAE/0lEQVR4nO2WXUxbZRzGudJrvewLNOe09Lulh7YwAqWlLYl8rCibibotAbOhYzgkkxldtjHGpuDU9ZzS8jG+RNxkw8R9mBjQ7MKwyZjMjC2b88LEG+fmhXMXZhEecw6Uz56O069p0n/yJISWl+f3/p/3/75paalKVapS9b8oSzpnZGQ+HyPzzTCEfcgQFnHWQ2Ftme+4Kf24IW7GlUrf0wxhAwxhZxNgGuFkJr5/zIT163QHn4rdvIz9Nh6msuUsDDoOWoaDxjovLcMJvzPLRUBkvm9igjATXzAe5g06FhobJyqtlQcR7QYXfeZFYjM4OLFu8zqTuHHNKpmtHbDJ/WvilJ3h10sGEA5szDu/fvMaGwdTQQBtH46Hi9JH0gEIeyO0wOnRKxg5PQkp3eAzL8W8xsaBKQri6s07KLX3rVxPxl6PAsD3V2gB3vznI5MJ3X2NjYPL24/pWz/j/WMru2Am7INoOhBTfLRm6QDbG74QAM6NX1uzXtIBhFEpEaDzk+8EgEvXbv8HACzSzDvKT+DKzE8CwMT0reQBiB1iqRHqGZ4QzPM6Ozb95Dsg5RDvPXRh0Tyvo21jsQOUqAfgUfXDreqHU9kLO92NDfIALOlc2N1f3Qn+ecDfsI8z39R8QRidIfP8z2WOvvgAhJNH3Y/hoe+RJw+sowvid4GjondFbEIKd5HFFWC5nFm9yM3siAiRbfELN6zZHoCrsl8Ylfy0mbqxtOvTCxoauQxrJpc8gJD4eDEk/D/m3zb8ri6PyWpdvXlH+I6Y+YQD8CrO6oMlwy86mfjnAX/D8hPm8o+3hVl/dmxaOLDhMp90AF4uVR+sGZEjFa3SkgHAy63iOyEehUjKIxxKSQc2kyCqSSd2kC7sJN2oI92JATj56aRonNZrOoew8JAObCOdglExJa0DIRUKBzuyeSfxo5p0LZrcQwfRlvMxOovacbL0CM54W/DlC4dwflNzrAB98Kh7JAF41AOwiYxYC2GxiQTmjad347DJh6GSoxh/eT+u72zCr00N+LO5Dn+3vo7ZtlqgfYd0gALVPhgVG5FFm0BTNCiKAk2poaELwCi3oDCrGSXq/siTSdm7dqwSdjEu+3V+nCptxQ+1e/HHgV2ArwH4rA041wNcPANMnAcmvwamxqUD8IYfJxWdA6tyO1yqoChEbubSjW0jHGpIF+ozuuEv+ACXat7Bg5Y6YPAwMH4KmBoTzIZTQgBCUlBqoSsudWANgENxYuGwcthKOtEg78Lwc0fwy55GoGcfcHFU1HTSABZBaDVylNtWdIR/O/EPwCoSwJvyToxubMFvB3ZjJtiKr4LHMPDeQbS/3Yi3al9F9UsvYsvmKlR5K1BZUQ632w2XywW325UcgKWOaGBRVsOlmu+Ik2axVfcuXit5BTXeMngWjLkkSDIAf2BjgZjvSBbMhnzY7UWSDbuWyekomZMMoKZtc7ECLJfRaER+fj6Ki4vXbdzhcIBhGGg1hlnJAAb6+d/jCRCSUqmEyWRCbm4uCgsL4XQ6Vxi22+2w2WzQ6/VQKBTC3+i1uXclA1jo+t00Nb9AokXTtCCxzxhdeb1kgPkueO8nA4CKIL02715atLVB1/ishnI8elLm1SrjI6Ox/JmoAUIQBsp7P1lxohZiY9Dm3YvZ/PKyKHa9oacq76oo2xxNqeJuWqFQQJWlmeMPrFlTVhc346lKVapSlZbI+hcf/WQs2PjpSAAAAABJRU5ErkJggg==";
-
-    function getNormalizedObject(type, number) {
-        if (type.toUpperCase() === 'SHARPLESS') type = 'Sh2';
-        return `${type} ${number}`;
-    }
+    // --- STELLARIUM SCANNER ---
 
     function createStellariumIcon(objectName) {
         const img = document.createElement('img');
@@ -237,6 +232,7 @@
         const wrapper = document.createElement('span');
         wrapper.style.display = 'inline-flex';
         wrapper.style.alignItems = 'center';
+        wrapper.appendChild(img);
         wrapper.onclick = (e) => { e.preventDefault(); e.stopPropagation(); sendStellariumFocus(objectName, wrapper); };
         return wrapper;
     }
@@ -245,9 +241,12 @@
         const h1 = document.querySelector('h1');
         if (h1 && !processedElements.has(h1)) {
             const text = h1.innerText;
-            let match; catalogRegex.lastIndex = 0;
+            const regex = getCatalogRegex();
+            let match;
             const matches = [];
-            while ((match = catalogRegex.exec(text)) !== null) { matches.push(getNormalizedObject(match[1], match[2])); }
+            while ((match = regex.exec(text)) !== null) {
+                matches.push(getNormalizedObject(match[1], match[2]));
+            }
             if (matches.length > 0) {
                 const container = document.createElement('span');
                 container.style.fontSize = '0.6em';
@@ -259,16 +258,29 @@
     }
 
     function scanAndInjectLinks() {
-        document.querySelectorAll('a').forEach(link => {
+        // Using the logic from your working script: query ALL 'a' tags
+        const links = document.querySelectorAll('a');
+        links.forEach(link => {
             if (processedElements.has(link)) return;
+
             const text = link.innerText.trim();
             if (text.length > 30 || text.length < 2) return;
-            catalogRegex.lastIndex = 0;
-            const match = catalogRegex.exec(text);
-            if (match && match[0].length >= text.length - 5) {
-                const icon = createStellariumIcon(getNormalizedObject(match[1], match[2]));
-                link.parentNode.insertBefore(icon, link.nextSibling);
-                processedElements.add(link);
+
+            const regex = getCatalogRegex();
+            const match = regex.exec(text);
+
+            if (match) {
+                const objName = getNormalizedObject(match[1], match[2]);
+                // Heuristic from working script: Check if match covers most of the text
+                if (match[0].length >= text.length - 5) {
+                    const icon = createStellariumIcon(objName);
+                    if (link.nextSibling) {
+                        link.parentNode.insertBefore(icon, link.nextSibling);
+                    } else {
+                        link.parentNode.appendChild(icon);
+                    }
+                    processedElements.add(link);
+                }
             }
         });
     }
@@ -294,6 +306,9 @@
     }
 
     function sendStellariumFocus(name, uiElement) {
+        const img = uiElement.querySelector('img');
+        if(img) img.style.opacity = '0.5';
+
         const params = new URLSearchParams(); params.append('target', name);
         GM_xmlhttpRequest({
             method: "POST",
@@ -306,13 +321,34 @@
                         method: "POST",
                         url: `${SETTINGS.stellariumHost}/api/main/action`,
                         data: "id=actionSetTracking_True",
-                        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        onload: () => {
+                            if(img) {
+                                img.style.opacity = '1';
+                                img.style.filter = "sepia(100%) hue-rotate(100deg) saturate(500%)";
+                                setTimeout(() => { img.style.filter = "none"; }, 2000);
+                            }
+                        }
                     });
+                } else {
+                    if(img) {
+                        img.style.opacity = '1';
+                        img.style.filter = "sepia(100%) hue-rotate(-50deg) saturate(600%)";
+                        setTimeout(() => { img.style.filter = "none"; }, 2000);
+                    }
+                }
+            },
+            onerror: () => {
+                 if(img) {
+                    img.style.opacity = '1';
+                    img.style.filter = "sepia(100%) hue-rotate(-50deg) saturate(600%)";
+                    setTimeout(() => { img.style.filter = "none"; }, 2000);
                 }
             }
         });
     }
 
+    // --- MAIN LOOP ---
     setInterval(() => {
         injectConfigButton();
         scanAndInjectHeader();

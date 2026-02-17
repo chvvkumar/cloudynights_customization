@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         AstroBin to Stellarium (Seamless)
+// @name         AstroBin to Stellarium (Focus API)
 // @namespace    http://tampermonkey.net/
-// @version      4.1
-// @description  Adds a native-looking "Stellarium Targets" row to AstroBin.
+// @version      7.0
+// @description  Uses the 'main/focus' endpoint with the 'target' parameter.
 // @author       Dev
 // @match        https://www.astrobin.com/*
 // @match        https://app.astrobin.com/*
@@ -13,71 +13,74 @@
 (function() {
     'use strict';
 
-    // Standard port for Stellarium. You need the Remote Control plugin enabled in the app for this to work.
     const STELLARIUM_HOST = "http://localhost:8090";
     
-    // Regex to scrape standard catalog IDs (Messier, NGC, IC, etc.).
-    // We look for these anywhere on the page because AstroBin's layout changes, but the text is usually reliable.
+    // Regex for standard deep sky objects
     const catalogRegex = /\b(M|NGC|IC|Mel|Cr|Col|Sharpless|Sh2|LBN|LDN)\s*-?\s*(\d+)\b/ig;
     
-    // Use a Set to dedup because sometimes the page mentions "M42" twelve times.
     const foundObjects = new Set();
 
-    // Polling to wait for the page to load.
-    // AstroBin is dynamic, so we can't just run once at document_end.
     const init = setInterval(() => {
-        // We anchor everything to the "DEC center" line. If that's not there, we aren't on an image page.
+        const metadataBlock = document.querySelector('div.subtitle');
         const anchor = document.querySelector('abbr.dec-coordinates, .dec-coordinates');
         
-        // If we found the anchor and haven't injected our row yet, let's go.
-        if (anchor && !document.querySelector('#stellarium-row')) {
+        if (metadataBlock && anchor && !document.querySelector('#stellarium-row')) {
             clearInterval(init);
-            
-            // Give it a sec (1000ms) to ensure all the plate-solved text is actually rendered.
             setTimeout(() => {
-                scanPageForObjects();
+                scanMetadata(metadataBlock);
                 createSeamlessRow(anchor);
             }, 1000); 
         }
     }, 2000);
 
-    // Scrapes the body text for those catalog IDs.
-    function scanPageForObjects() {
-        const textContent = document.body.innerText;
+    function scanMetadata(element) {
+        const text = element.innerText;
         let match;
         
-        // Loop through every match found in the text
-        while ((match = catalogRegex.exec(textContent)) !== null) {
-            let type = match[1].toUpperCase();
+        while ((match = catalogRegex.exec(text)) !== null) {
+            let type = match[1];
+            let number = match[2];
             
-            // Cleanup: Stellarium is picky. "M" needs to be "M " (with space) sometimes, 
-            // and "Sharpless" is usually "Sh2" in their db.
-            if (type === 'M') type = 'M '; 
-            if (type === 'SHARPLESS') type = 'Sh2';
+            // Reconstruct strictly as found, or normalize if needed.
+            // The user report suggests "Sh2-240" works, so we keep the hyphen if found, 
+            // or construct it standardly.
             
-            // Add to our unique set: "NGC 2244"
-            foundObjects.add(`${type.trim()} ${match[2]}`);
+            // Standardize "Sharpless" to "Sh2" to match your successful test
+            if (type.toUpperCase() === 'SHARPLESS') type = 'Sh2';
+            
+            // Construct the ID. 
+            // If the original text had a hyphen (captured in regex logic implicit in match), 
+            // we usually just want "Type-Number" or "Type Number".
+            // Let's try sending it exactly as standard Stellarium search string: "Sh2 240" or "Sh2-240"
+            
+            // Note: Your curl example used "Sh2-240". 
+            // The regex might have split "Sh2" and "240". 
+            // We'll join them with a hyphen if it's Sh2, space for others if safe.
+            
+            let finalID;
+            if (type.toUpperCase().includes('SH')) {
+                finalID = `Sh2-${number}`; // Mimic your curl success
+            } else {
+                finalID = `${type} ${number}`; // M 42, NGC 2244 usually prefer space
+            }
+            
+            foundObjects.add(finalID);
         }
     }
 
-    // This builds the UI. We want it to look like it belongs on AstroBin, not like a hacked-on widget.
     function createSeamlessRow(anchorElement) {
-        // 1. Container: No background, just a transparent div to hold our line.
         const container = document.createElement('div');
         container.id = 'stellarium-row';
         container.style.cssText = 'margin-top: 8px; margin-bottom: 8px; line-height: 1.5; font-size: 14px;';
         
-        // 2. The Label: Styled exactly like the "RA center:" and "DEC center:" labels on the site.
         const label = document.createElement('strong');
         label.textContent = 'Stellarium: ';
         label.style.color = '#fff'; 
         container.appendChild(label);
 
-        // 3. The Chips Container: Holds our clickable targets.
         const chipsContainer = document.createElement('span');
         container.appendChild(chipsContainer);
 
-        // Styling for the chips: rounded pills, dark gray, turning orange on hover.
         const chipStyle = `
             display: inline-block;
             margin: 0 4px 4px 0;
@@ -93,16 +96,14 @@
             text-decoration: none;
         `;
 
-        // If we found objects (like M42), make a chip for each one.
         if (foundObjects.size > 0) {
             foundObjects.forEach(objName => {
                 const btn = document.createElement('a'); 
                 btn.textContent = objName;
                 btn.style.cssText = chipStyle;
                 
-                // Native-feeling hover effects
                 btn.onmouseenter = () => {
-                    btn.style.borderColor = '#e67e22'; // That specific AstroBin orange
+                    btn.style.borderColor = '#e67e22';
                     btn.style.color = '#fff';
                     btn.style.backgroundColor = '#444';
                 };
@@ -114,19 +115,17 @@
 
                 btn.onclick = (e) => {
                     e.preventDefault();
-                    sendToStellarium(objName, btn);
+                    sendFocus(objName, btn);
                 };
                 chipsContainer.appendChild(btn);
             });
+        } else {
+            const msg = document.createElement('span');
+            msg.textContent = "No targets in metadata.";
+            msg.style.cssText = "color: #777; font-style: italic; padding-left: 5px;";
+            chipsContainer.appendChild(msg);
         }
 
-        // 4. Always add a "Coords" fallback. Even if we found IDs, sometimes the plate solve is wrong 
-        // or the user just wants the exact center framing.
-        const coordsText = foundObjects.size > 0 ? "Coords 📍" : "Send Coordinates";
-        createCoordChip(chipsContainer, chipStyle, coordsText);
-
-        // Injection logic: Try to insert after the parent block of the DEC line.
-        // If that fails, just append to the parent directly.
         const parentBlock = anchorElement.closest('div, p'); 
         if (parentBlock) {
             parentBlock.after(container);
@@ -135,106 +134,66 @@
         }
     }
 
-    // Helper for the "Coords" button since it has slightly different styling (dashed border)
-    function createCoordChip(container, style, text) {
-        const btn = document.createElement('a');
-        btn.textContent = text;
-        btn.style.cssText = style;
-        btn.style.borderStyle = 'dashed'; // Dashed helps distinguish it from "real" targets
-        btn.style.opacity = '0.8';
-        
-        btn.onmouseenter = () => { btn.style.borderColor = '#e67e22'; btn.style.opacity = '1'; };
-        btn.onmouseleave = () => { btn.style.borderColor = '#555'; btn.style.opacity = '0.8'; };
-        
-        btn.onclick = (e) => {
-            e.preventDefault();
-            const ra = document.querySelector('.ra-coordinates')?.textContent;
-            const dec = document.querySelector('.dec-coordinates')?.textContent;
-            if(ra && dec) sendCoords(ra, dec, btn);
-        };
-        container.appendChild(btn);
-    }
-
-    // --- API Stuff ---
-
-    // Sends a Named Target (e.g., "M 42"). 
-    // This is better for Oculars plugin because it locks onto the object metadata.
-    async function sendToStellarium(name, btn) {
+    // --- NEW API LOGIC ---
+    
+    async function sendFocus(name, btn) {
         const originalText = btn.textContent;
         btn.textContent = '...';
-        
-        // We use a direct script here. It's cleaner than chaining REST calls.
-        // 1. Select it. 2. Turn on tracking. 3. Zoom in a bit so user sees it.
-        const script = `
-            var target = "${name}";
-            core.selectObjectByName(target, true);
-            StelMovementMgr.setFlagTracking(true); 
-            StelMovementMgr.autoZoomIn(4);
-        `;
-        postScript(script, btn, originalText);
-    }
 
-    // Sends Raw Coordinates.
-    // Useful if the object is obscure (no catalog ID) or if we just want the framing.
-    async function sendCoords(ra, dec, btn) {
-        const originalText = btn.textContent;
-        btn.textContent = '...';
-        
-        const raDec = parseRAToDecimal(ra);
-        const decDec = parseDECToDecimal(dec);
-        
-        // Move to J2000 coordinates and force tracking on.
-        const script = `
-            core.moveToRaDecJ2000("${raDec}", "${decDec}", 1);
-            StelMovementMgr.setFlagTracking(true);
-        `;
-        postScript(script, btn, originalText);
-    }
+        // 1. FOCUS Request (POST target=NAME)
+        // Mimics: curl -X POST http://localhost:8090/api/main/focus -d "target=Sh2-240"
+        const focusParams = new URLSearchParams();
+        focusParams.append('target', name);
 
-    // Generic POST handler to send the script to Stellarium's API
-    function postScript(code, btn, origText) {
-        const params = new URLSearchParams();
-        params.append('code', code);
-        
         GM_xmlhttpRequest({
             method: "POST",
-            url: `${STELLARIUM_HOST}/api/scripts/direct`,
-            data: params.toString(),
+            url: `${STELLARIUM_HOST}/api/main/focus`,
+            data: focusParams.toString(),
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             onload: (res) => {
-                const success = res.status === 200;
-                // Visual feedback: Green check or Red X
-                btn.style.borderColor = success ? '#27ae60' : '#c0392b';
-                btn.textContent = success ? '✔' : '✘';
-                
-                // Reset button after 2 seconds
-                setTimeout(() => { 
-                    btn.textContent = origText; 
-                    btn.style.borderColor = '#555'; 
-                }, 2000);
+                if (res.status === 200) {
+                    // Success! Now let's try to lock tracking for Oculars
+                    // We send a follow-up action to ensure it stays centered
+                    enableTracking(btn, originalText);
+                } else {
+                    fail(btn, originalText);
+                }
             },
-            onerror: () => {
-                btn.textContent = 'Err';
-                setTimeout(() => { btn.textContent = origText; }, 2000);
-            }
+            onerror: () => fail(btn, originalText)
         });
     }
 
-    // Regex math to handle "12h 4m 2s" or "12h4m2.5s" -> Decimal Degrees
-    function parseRAToDecimal(ra) {
-        const normalized = ra.replace(/s\./i, '.'); // Handle annoying formats like "30s.5"
-        const m = normalized.match(/(\d+)h\s*(\d+)m\s*([\d.]+)/i);
-        // Standard formula: (H + M/60 + S/3600)
-        return m ? (parseInt(m[1]) + parseInt(m[2]) / 60 + parseFloat(m[3]) / 3600).toFixed(6) : 0;
+    function enableTracking(btn, originalText) {
+        // Send 'action' to set tracking true
+        const trackParams = new URLSearchParams();
+        trackParams.append('id', 'actionSetTracking_True');
+        
+        GM_xmlhttpRequest({
+            method: "POST",
+            url: `${STELLARIUM_HOST}/api/main/action`,
+            data: trackParams.toString(),
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            onload: () => success(btn, originalText),
+            onerror: () => success(btn, originalText) // Even if this fails, focus might have worked
+        });
     }
 
-    // Regex math for Declination. Handles the negative sign carefully.
-    function parseDECToDecimal(dec) {
-        const normalized = dec.replace(/(["″])\./, '.');
-        const m = normalized.match(/([+\-−–]?)(\d+)[°dº]\s*(\d+)['m′]\s*([\d.]+)/i);
-        if (!m) return 0;
-        
-        const sign = (m[1] === '-' || m[1] === '−' || m[1] === '–') ? -1 : 1;
-        return (sign * (parseInt(m[2]) + parseInt(m[3]) / 60 + parseFloat(m[4]) / 3600)).toFixed(6);
+    function success(btn, origText) {
+        btn.style.borderColor = '#27ae60';
+        btn.textContent = '✔';
+        setTimeout(() => { 
+            btn.textContent = origText; 
+            btn.style.borderColor = '#555'; 
+        }, 2000);
     }
+
+    function fail(btn, origText) {
+        btn.style.borderColor = '#c0392b';
+        btn.textContent = '✘';
+        setTimeout(() => { 
+            btn.textContent = origText; 
+            btn.style.borderColor = '#555'; 
+        }, 2000);
+    }
+
 })();

@@ -12,6 +12,9 @@
 // @connect      localhost
 // @connect      127.0.0.1
 // @connect      *
+// @updateURL    https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/astrobin-stellarium-nina.user.js
+// @downloadURL  https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/astrobin-stellarium-nina.user.js
+
 // ==/UserScript==
 
 (function() {

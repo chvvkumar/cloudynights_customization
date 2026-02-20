@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AstroBin to Stellarium & NINA (Optimized)
 // @namespace    http://tampermonkey.net/
-// @version      13.6
-// @description  Adds Stellarium focus icons and NINA framing buttons to AstroBin. (Fixes Coord Vector & Sh2 Format)
+// @version      15.0
+// @description  Adds Stellarium focus icons and NINA framing buttons to AstroBin. Supports both classic and new layouts.
 // @author       Dev
 // @match        https://www.astrobin.com/*
 // @match        https://app.astrobin.com/*
@@ -40,6 +40,9 @@
         .ab-cfg-in { padding: 6px; background: #181825; color: #cdd6f4; border: 1px solid #45475a; border-radius: 4px; font-size: 12px; width: 100%; }
         .ab-txt-blue { color: #89b4fa; }
         .ab-txt-pink { color: #f5c2e7; margin-left: 6px; }
+        .ab-nina-meta-item { cursor: pointer; }
+        .ab-meta-cog { cursor: pointer; }
+        .ab-meta-cog:hover { color: #89b4fa; }
     `;
 
     // --- STATE & SETUP ---
@@ -56,6 +59,12 @@
     const processed = new Set();
     const ninaElements = [];
     let curCoords = null;
+
+    // Layout detection: new Angular layout (app.astrobin.com) vs classic (www.astrobin.com)
+    const isNewLayout = () => !!document.querySelector('astrobin-root');
+
+    // Inline SVG cog icon for new layout (FontAwesome gear)
+    const COG_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:16px;height:16px;fill:currentColor;"><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.1-28.2 18.2-44 24l-10.5 57.5c-1.7 9.3-8.9 16.5-18.2 17.8c-12.8 1.8-26 2.8-39.4 2.8s-26.5-.9-39.4-2.8c-9.4-1.3-16.5-8.5-18.2-17.8l-10.5-57.5c-15.8-5.8-30.7-13.9-44-24l-55.7 17.7c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.1 28.2-18.2 44-24l10.5-57.5c1.7-9.3 8.9-16.5 18.2-17.8C224.5 .9 237.7 0 251.1 0h9.8c12.8 0 26 .9 39.4 2.8c9.4 1.3 16.5 8.5 18.2 17.8l10.5 57.5c15.8 5.8 30.7 13.9 44 24l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></svg>';
 
     const styleEl = document.createElement('style');
     styleEl.textContent = CSS;
@@ -82,16 +91,6 @@
         if (['LBN', 'LDN', 'PGC', 'UGC', 'GUM', 'RCW', 'ABEL'].includes(t)) return `${t} ${number}`;
         // Standard catalogs
         return `${t} ${number}`;
-    };
-
-    // Convert RA/Dec (degrees) to Cartesian Vector [x, y, z] for Stellarium API
-    const raDecToVector = (ra, dec) => {
-        const raRad = ra * (Math.PI / 180);
-        const decRad = dec * (Math.PI / 180);
-        const x = Math.cos(decRad) * Math.cos(raRad);
-        const y = Math.cos(decRad) * Math.sin(raRad);
-        const z = Math.sin(decRad);
-        return `[${x},${y},${z}]`;
     };
 
     // --- BUTTON ACTIONS ---
@@ -124,7 +123,7 @@
     function sendStellariumCoords(ra, dec, pill) {
         if (!pill) return;
         console.log(`[AB-Script] Sending Coords to Stellarium: RA=${ra}, DEC=${dec}`);
-        
+
         pill.style.opacity = '0.5';
         const reset = (color) => {
             pill.style.opacity = '1';
@@ -132,26 +131,33 @@
             setTimeout(() => pill.style.borderColor = '#45475a', 3000);
         };
 
-        // Stellarium /api/main/view requires "j2000" to be a JSON array of 3 doubles (Vector3)
-        // We use raDecToVector to create string "[x,y,z]"
-        const vec = raDecToVector(ra, dec);
-        const payload = `j2000=${vec}`;
-        const targetUrl = `${SETTINGS.stellarium}/api/main/view`;
-
-        console.log(`[AB-Script] POST URL: ${targetUrl}`);
-        console.log(`[AB-Script] Payload: ${payload}`);
+        // Use Stellarium scripting API for smooth slew (3 second duration)
+        // RA/DEC in degrees with 'd' suffix for StelUtils::getDecAngle()
+        const script = `core.moveToRaDecJ2000("${ra.toFixed(6)}d", "${dec.toFixed(6)}d", 3);`;
+        console.log(`[AB-Script] Running Stellarium script: ${script}`);
 
         GM_xmlhttpRequest({
             method: "POST",
-            url: targetUrl,
-            data: payload,
+            url: `${SETTINGS.stellarium}/api/scripts/direct`,
+            data: `code=${encodeURIComponent(script)}`,
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             onload: (res) => {
-                console.log(`[AB-Script] Response: ${res.status} ${res.statusText}`);
+                console.log(`[AB-Script] Script Response: ${res.status} ${res.statusText}`);
                 if (res.status === 200) {
                     reset('#a6e3a1');
+                    // Zoom to 20° FOV after slew completes
+                    setTimeout(() => {
+                        GM_xmlhttpRequest({
+                            method: "POST",
+                            url: `${SETTINGS.stellarium}/api/main/fov`,
+                            data: "fov=20",
+                            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                            onload: () => console.log("[AB-Script] FOV set to 20°"),
+                            onerror: () => {}
+                        });
+                    }, 3000);
                 } else {
-                    console.error(`[AB-Script] Error Response Body:`, res.responseText);
+                    console.error(`[AB-Script] Script Error:`, res.responseText);
                     reset('#f38ba8');
                 }
             },
@@ -168,17 +174,116 @@
         let html = `<span class="ab-txt-blue">RA</span> ${curCoords.ra.toFixed(3)}° <span class="ab-txt-blue" style="margin-left:6px">DEC</span> ${curCoords.dec.toFixed(3)}°`;
         if (curCoords.rot !== null) html += `<span class="ab-txt-pink">ROT</span> ${curCoords.rot.toFixed(1)}°`;
 
-        ninaElements.forEach(li => {
-            if (document.body.contains(li)) {
-                li.style.display = 'list-item';
-                const lbl = li.querySelector('.ab-nina-coords');
-                if (lbl) lbl.innerHTML = html;
+        ninaElements.forEach(el => {
+            if (!document.body.contains(el)) return;
+
+            // New layout: el is a metadata-section, show its hidden items
+            if (el.classList.contains('ab-meta-section')) {
+                el.querySelectorAll('.ab-nina-meta-item').forEach(item => {
+                    item.style.removeProperty('display');
+                });
+                return;
             }
+
+            // Classic layout: el is an <li>
+            el.style.display = 'list-item';
+            const lbl = el.querySelector('.ab-nina-coords');
+            if (lbl) lbl.innerHTML = html;
         });
     }
 
     function injectConfig() {
         if (document.getElementById('ab-nina-script-injected')) return;
+
+        if (isNewLayout()) {
+            injectNewLayoutUI();
+        } else {
+            injectClassicLayoutUI();
+        }
+    }
+
+    // New Angular layout: inject into div.metadata-striped as native metadata-items
+    function injectNewLayoutUI() {
+        const metaStrip = document.querySelector('div.metadata-striped');
+        if (!metaStrip) return;
+
+        const section = createEl('div', 'metadata-section ab-meta-section');
+        section.id = 'ab-nina-script-injected';
+
+        const activeHosts = SETTINGS.nina.filter(h => h.enabled && h.url);
+
+        if (activeHosts.length) {
+            // "Send coordinates to:" header matching native "Integration" header style
+            const header = createEl('div', 'metadata-header d-flex justify-content-between ab-nina-meta-item');
+            header.style.cssText = 'display:none;cursor:default;width:100%;flex-basis:100%;';
+            const existingHeader = metaStrip.querySelector('.metadata-header');
+            if (existingHeader) {
+                Array.from(existingHeader.attributes).forEach(attr => {
+                    if (attr.name.startsWith('_ngcontent')) header.setAttribute(attr.name, attr.value);
+                });
+            }
+            const headerSpan = createEl('span', '', ' Send coordinates to: ');
+            if (existingHeader) {
+                const existingSpan = existingHeader.querySelector('span');
+                if (existingSpan) {
+                    Array.from(existingSpan.attributes).forEach(attr => {
+                        if (attr.name.startsWith('_ngcontent')) headerSpan.setAttribute(attr.name, attr.value);
+                    });
+                }
+            }
+            header.appendChild(headerSpan);
+            section.appendChild(header);
+
+            // Stellarium coordinate button (hidden until coords available)
+            const stelItem = createEl('div', 'metadata-item ab-nina-meta-item');
+            stelItem.style.display = 'none';
+            stelItem.title = 'Center Coordinates in Stellarium';
+            const stelIconDiv = createEl('div', 'metadata-icon');
+            const stelPill = createEl('div', 'ab-nina-pill');
+            stelPill.style.cssText = 'width:auto;padding:0 8px;';
+            stelPill.innerHTML = '<span style="font-size:9px;font-weight:bold;color:#cdd6f4;">Stellarium</span>';
+            stelIconDiv.appendChild(stelPill);
+            stelItem.appendChild(stelIconDiv);
+            stelItem.onclick = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (curCoords) sendStellariumCoords(curCoords.ra, curCoords.dec, stelPill);
+            };
+            section.appendChild(stelItem);
+
+            // NINA host buttons (hidden until coords available)
+            activeHosts.forEach(host => {
+                const item = createEl('div', 'metadata-item ab-nina-meta-item');
+                item.style.display = 'none';
+                item.title = `Send to ${host.name}`;
+                const iconDiv = createEl('div', 'metadata-icon');
+                const pill = createEl('div', 'ab-nina-pill');
+                pill.innerHTML = `<span style="font-size:9px;font-weight:bold;color:#cdd6f4;">${host.name[0].toUpperCase()}</span>`;
+                iconDiv.appendChild(pill);
+                item.appendChild(iconDiv);
+                item.onclick = (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    if (curCoords) sendNina(host.url, curCoords.ra, curCoords.dec, pill);
+                };
+                section.appendChild(item);
+            });
+
+            ninaElements.push(section);
+        }
+
+        // Config cog (always visible)
+        const cogItem = createEl('div', 'metadata-item ab-meta-cog');
+        cogItem.title = 'Script Settings';
+        const cogIconDiv = createEl('div', 'metadata-icon');
+        cogIconDiv.innerHTML = COG_SVG;
+        cogItem.appendChild(cogIconDiv);
+        cogItem.onclick = (e) => { e.preventDefault(); showConfig(); };
+        section.appendChild(cogItem);
+
+        metaStrip.appendChild(section);
+    }
+
+    // Classic layout: inject into navbar next to upload button
+    function injectClassicLayoutUI() {
         const uploadBtn = document.querySelector('a.upload-button');
         if (!uploadBtn) return;
 
@@ -202,7 +307,7 @@
 
             const row = createEl('div', 'ab-nina-row');
 
-            // 1. Stellarium Button (Coordinates)
+            // Stellarium Button (Coordinates)
             const stelBtn = createEl('a', 'ab-nina-btn');
             stelBtn.title = "Center Coordinates in Stellarium";
             const stelPill = createEl('div', 'ab-nina-pill');
@@ -212,16 +317,11 @@
             stelBtn.appendChild(stelPill);
             stelBtn.onclick = (e) => {
                 e.preventDefault(); e.stopPropagation();
-                if (curCoords) {
-                    console.log("[AB-Script] Stellarium Coord Button Clicked");
-                    sendStellariumCoords(curCoords.ra, curCoords.dec, stelPill);
-                } else {
-                    console.warn("[AB-Script] No coordinates found yet.");
-                }
+                if (curCoords) sendStellariumCoords(curCoords.ra, curCoords.dec, stelPill);
             };
             row.appendChild(stelBtn);
 
-            // 2. NINA Buttons
+            // NINA Buttons
             activeHosts.forEach(host => {
                 const btn = createEl('a', 'ab-nina-btn');
                 btn.title = `Send to ${host.name}`;
@@ -304,15 +404,16 @@
     function scan() {
         injectConfig();
 
-        const h1 = document.querySelector('h1');
-        if (h1 && !processed.has(h1)) {
-            const matches = [...h1.innerText.matchAll(CATALOG_REGEX)];
+        // Title scanning: h1 (generic), h3.image-title (classic), .image-viewer-title h2 (new)
+        const titleEl = document.querySelector('h1') || document.querySelector('.image-viewer-title h2') || document.querySelector('h3.image-title');
+        if (titleEl && !processed.has(titleEl)) {
+            const matches = [...titleEl.innerText.matchAll(CATALOG_REGEX)];
             if (matches.length) {
                 const c = createEl('span');
                 c.style.fontSize = '0.6em';
                 matches.forEach(m => c.appendChild(createIcon(formatStellariumName(m[1], m[2]))));
-                h1.appendChild(c);
-                processed.add(h1);
+                titleEl.appendChild(c);
+                processed.add(titleEl);
             }
         }
 
@@ -330,22 +431,62 @@
             }
         });
 
-        const r = document.querySelector('abbr.ra-coordinates');
-        const d = document.querySelector('abbr.dec-coordinates');
-        if (r && d) {
-            const ra = parseFloat(r.getAttribute('title'));
-            const dec = parseFloat(d.getAttribute('title'));
-            if (!isNaN(ra) && !isNaN(dec)) {
-                let rot = null;
-                document.querySelectorAll('strong.card-label').forEach(l => {
-                    if (l.textContent.trim() === 'Orientation:') {
-                        const m = l.parentElement.textContent.match(/([-\d.]+)\s*degrees/);
-                        if (m) rot = parseFloat(m[1]);
+        // --- Coordinate extraction (classic + new layout) ---
+        let ra = null, dec = null, rot = null;
+
+        // Classic layout: abbr elements with decimal degrees in title attribute
+        const rAbbr = document.querySelector('abbr.ra-coordinates');
+        const dAbbr = document.querySelector('abbr.dec-coordinates');
+        if (rAbbr && dAbbr) {
+            ra = parseFloat(rAbbr.getAttribute('title'));
+            dec = parseFloat(dAbbr.getAttribute('title'));
+
+            // Classic orientation: strong.card-label "Orientation:" text
+            document.querySelectorAll('strong.card-label').forEach(l => {
+                if (l.textContent.trim() === 'Orientation:') {
+                    const m = l.parentElement.textContent.match(/([-\d.]+)\s*degrees/);
+                    if (m) rot = parseFloat(m[1]);
+                }
+            });
+        }
+
+        // New layout fallback: parse HMS/DMS from span.coordinates
+        if (ra === null || dec === null || isNaN(ra) || isNaN(dec)) {
+            const coordsEl = document.querySelector('span.coordinates');
+            if (coordsEl) {
+                const raEl = coordsEl.querySelector('span.ra');
+                const decEl = coordsEl.querySelector('span.dec');
+                if (raEl && decEl) {
+                    const raH = parseFloat(raEl.querySelector('.hours')?.textContent) || 0;
+                    const raM = parseFloat(raEl.querySelector('.minutes')?.textContent) || 0;
+                    const raS = parseFloat(raEl.querySelector('.seconds')?.textContent) || 0;
+                    ra = raH * 15 + raM * (15 / 60) + raS * (15 / 3600);
+
+                    const decDeg = parseFloat(decEl.querySelector('.degrees')?.textContent) || 0;
+                    const decM = parseFloat(decEl.querySelector('.minutes')?.textContent) || 0;
+                    const decS = parseFloat(decEl.querySelector('.seconds')?.textContent) || 0;
+                    const sign = decDeg < 0 ? -1 : 1;
+                    dec = sign * (Math.abs(decDeg) + decM / 60 + decS / 3600);
+
+                    // New layout orientation: metadata-label next to fa-icon[icon="location-arrow"]
+                    const locArrow = document.querySelector('fa-icon[icon="location-arrow"]');
+                    if (locArrow) {
+                        const metaItem = locArrow.closest('.metadata-item');
+                        if (metaItem) {
+                            const label = metaItem.querySelector('.metadata-label');
+                            if (label) {
+                                const rotMatch = label.textContent.trim().match(/([-\d.]+)/);
+                                if (rotMatch) rot = parseFloat(rotMatch[1]);
+                            }
+                        }
                     }
-                });
-                curCoords = { ra, dec, rot };
-                updateNinaUI();
+                }
             }
+        }
+
+        if (ra !== null && dec !== null && !isNaN(ra) && !isNaN(dec)) {
+            curCoords = { ra, dec, rot };
+            updateNinaUI();
         }
     }
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AstroBin to Stellarium & NINA (Optimized)
 // @namespace    http://tampermonkey.net/
-// @version      16.0
+// @version      17.0
 // @description  Adds Stellarium focus icons and NINA framing buttons to AstroBin. Supports both classic and new Angular layouts.
 // @author       Dev
 // @match        https://www.astrobin.com/*
@@ -356,6 +356,7 @@
         });
     }
 
+
     /**
      * Populates the object Stellarium button containers with detected objects.
      * Called after link scanning in scan().
@@ -492,11 +493,6 @@
             });
 
             wrap.appendChild(row);
-
-            // 5. Object Stellarium buttons (populated by updateObjectsUI)
-            const objRow = createEl('div', 'ab-nina-row ab-obj-container');
-            wrap.appendChild(objRow);
-
             ninaLi.appendChild(wrap);
             cogLi.parentNode.insertBefore(ninaLi, cogLi);
             ninaEls.push(ninaLi);
@@ -520,7 +516,7 @@
         // for the Stellarium buttons in the "Send coordinates to:" section.
         // Clear previous detections (objects persist across SPA navigations otherwise).
         detectedObjects.length = 0;
-        document.querySelectorAll('.objects-in-field a').forEach(link => {
+        document.querySelectorAll('.objects-in-field a, .subtitle a').forEach(link => {
             if (seen.has(link)) return;
             const txt = (link.textContent || '').trim();
             if (txt.length < 2 || txt.length > 30) return; // Optimization: skip short/long text
@@ -533,6 +529,15 @@
                 const name = fmtName(match[1], match[2]);
                 if (!detectedObjects.includes(name)) detectedObjects.push(name);
                 seen.add(link);
+
+                // For old layout: inject a small inline Stellarium icon after the link
+                if (link.closest('.subtitle')) {
+                    const wrap = createEl('span', 'ab-s-wrap');
+                    const img = createEl('img', 'ab-s-icon', '', { src: ICON_SRC, title: `Center in Stellarium: ${name}` });
+                    wrap.appendChild(img);
+                    wrap.onclick = stopAndRun(() => sendStellariumName(name, img));
+                    link.insertAdjacentElement('afterend', wrap);
+                }
             }
         });
         updateObjectsUI();

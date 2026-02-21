@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AstroBin to Stellarium & NINA (Optimized)
 // @namespace    http://tampermonkey.net/
-// @version      17.0
+// @version      18.0
 // @description  Adds Stellarium focus icons and NINA framing buttons to AstroBin. Supports both classic and new Angular layouts.
 // @author       Dev
 // @match        https://www.astrobin.com/*
@@ -55,9 +55,11 @@
         /* Row container for buttons */
         .ab-nina-row { display: flex; align-items: center; justify-content: space-evenly; width: 100%; gap: 6px; }
         
+        /* Shared interactive card base (pill + object entry) */
+        .ab-nina-pill, .ab-obj-entry { background: #313244; border: 1px solid ${CLR.border}; transition: border-color 0.2s, background 0.2s; }
+
         /* Pill-shaped buttons for NINA instances */
-        .ab-nina-pill { display: flex; align-items: center; justify-content: center; width: 34px; height: 20px; border-radius: 100px; background: #313244; border: 1px solid ${CLR.border}; transition: border-color 0.2s, background 0.2s; box-sizing: border-box; }
-        .ab-nina-pill:hover { border-color: ${CLR.blue}; background: #45475a; }
+        .ab-nina-pill { display: flex; align-items: center; justify-content: center; width: 34px; height: 20px; border-radius: 10px; box-sizing: border-box; }
         .ab-nina-pill-wide { width: auto; padding: 0 8px; }
         
         /* General button styling */
@@ -70,9 +72,6 @@
         /* Pill internal icon and label */
         .ab-pill-icon { width: 14px; height: 14px; opacity: 0.9; }
         .ab-pill-label { font-size: 9px; font-weight: bold; color: ${CLR.text}; }
-        
-        /* Icons in titles */
-        .ab-title-icons { font-size: 0.6em; }
         
         /* Cog/Settings icon container */
         .ab-cog-li { z-index: 9999; position: relative; }
@@ -100,8 +99,9 @@
         
         /* Config Footer (Buttons) */
         .ab-cfg-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
-        .ab-cfg-btn { padding: 8px 20px; background: transparent; color: #a6adc8; border: 1px solid ${CLR.border}; border-radius: 6px; cursor: pointer; }
-        .ab-cfg-btn-save { padding: 8px 24px; background: ${CLR.blue}; color: #11111b; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .ab-cfg-btn, .ab-cfg-btn-save { padding: 8px 20px; border-radius: 6px; cursor: pointer; }
+        .ab-cfg-btn { background: transparent; color: #a6adc8; border: 1px solid ${CLR.border}; }
+        .ab-cfg-btn-save { padding: 8px 24px; background: ${CLR.blue}; color: #11111b; border: none; font-weight: 600; }
         
         /* Utility text colors */
         .ab-txt-blue { color: ${CLR.blue}; }
@@ -117,14 +117,14 @@
         .ab-cog-inline .ab-cog-svg { width: 12px; height: 12px; }
         .ab-btn-group { display: none; }
         .ab-btn-group.ab-visible { display: block; }
-        .ab-btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .ab-btn-row, .ab-obj-container { display: flex; flex-wrap: wrap; gap: 6px; }
+        .ab-btn-row { margin-bottom: 8px; }
         .ab-btn-row:last-child { margin-bottom: 0; }
         .ab-section-label { font-size: 11px; color: #6c7086; margin-bottom: 6px; }
 
         /* Shared button entries (Send-to + Object buttons) */
-        .ab-obj-container { display: flex; flex-wrap: wrap; gap: 6px; }
-        .ab-obj-entry { display: inline-flex; align-items: center; gap: 4px; background: #313244; padding: 4px 8px; border-radius: 6px; border: 1px solid ${CLR.border}; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
-        .ab-obj-entry:hover { border-color: ${CLR.blue}; background: #45475a; }
+        .ab-obj-entry { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+        .ab-obj-entry:hover, .ab-nina-pill:hover { border-color: ${CLR.blue}; background: #45475a; }
         .ab-obj-name { font-size: 11px; color: ${CLR.text}; white-space: nowrap; }
     `;
 
@@ -147,17 +147,20 @@
     // Regex to identify astronomical catalog names in text (e.g., M31, NGC 7000).
     const CATALOG_REGEX = /\b(M|NGC|IC|Mel|Cr|Col|Sharpless|Sh2|LBN|LDN|Abell|HD|SAO|HIP|B|vdB|UGC|PGC|ESO|Mrk|Gum|RCW)\s*-?\s*(\d+)\b/ig;
     
-    // Set to track processed links to avoid duplicates.
-    const seen = new Set();
+    // WeakSet to track processed links to avoid duplicates (allows GC of detached DOM nodes).
+    const seen = new WeakSet();
     
     // Array to hold references to injected NINA UI elements for updates.
     const ninaEls = [];
 
-    // Array to hold detected astronomical object names for the Stellarium object buttons.
-    const detectedObjects = [];
+    // Set to hold detected astronomical object names for O(1) deduplication.
+    const detectedObjects = new Set();
 
     // Holds the currently detected coordinates (RA, DEC, Rotation).
     let coords = null;
+
+    // Tracks the last URL to detect SPA navigation changes.
+    let lastUrl = '';
 
     // Helper to detect if the page is using the new Angular layout (<astrobin-root>).
     const isNew = () => !!document.querySelector('astrobin-root');
@@ -176,7 +179,7 @@
     const logErr = (...a) => console.error('[AB-Script]', ...a);
 
     // Wrapper for GM_xmlhttpRequest to simplify GET calls.
-    const http = (url, method, cb, errCb) => GM_xmlhttpRequest({ method, url, onload: cb, onerror: errCb });
+    const httpGet = (url, cb, errCb) => GM_xmlhttpRequest({ method: 'GET', url, onload: cb, onerror: errCb });
 
     // Standard headers for form data.
     const FORM_HDR = { "Content-Type": "application/x-www-form-urlencoded" };
@@ -219,6 +222,19 @@
     // Helper to safely parse float from a selector's text content.
     const qf = (parent, sel) => parseFloat(parent.querySelector(sel)?.textContent) || 0;
 
+    // Factory to create an icon+label entry element (used in both layouts and object buttons).
+    const mkEntry = (icon, label, title) => {
+        const e = createEl('span', 'ab-obj-entry', '', { title });
+        e.append(createEl('img', 'ab-s-icon', '', { src: icon }), createEl('span', 'ab-obj-name', label));
+        return e;
+    };
+
+    // Guard that wraps a function to only execute when coordinates are available.
+    const ifCoords = fn => stopAndRun(() => { if (coords) fn(); });
+
+    // Validates that a coordinate value is non-null and numeric.
+    const validCoord = v => v !== null && !isNaN(v);
+
     // --------------------------------------------------------------------------------
     // --- BUTTON ACTIONS ---
     // --------------------------------------------------------------------------------
@@ -236,14 +252,14 @@
         const reset = pillFeedback(pill);
         
         // Step 1: Set Coordinates
-        http(`${host}/v2/api/framing/set-coordinates?RAangle=${ra}&DecAngle=${dec}`, "GET", (res) => {
+        httpGet(`${host}/v2/api/framing/set-coordinates?RAangle=${ra}&DecAngle=${dec}`, (res) => {
             log(`NINA Response (${host}): ${res.status} ${res.statusText}`);
             reset(res.status === 200 ? CLR.ok : CLR.err);
-            
+
             // Step 2: Set Rotation (if available and step 1 succeeded)
             if (res.status === 200 && coords?.rot !== null) {
                 log(`Sending Rotation to NINA: ${coords.rot}`);
-                http(`${host}/v2/api/framing/set-rotation?rotation=${coords.rot}`, "GET", () => {});
+                httpGet(`${host}/v2/api/framing/set-rotation?rotation=${coords.rot}`, () => {});
             } else if (res.status !== 200) {
                 logErr(`NINA Error Body: ${res.responseText}`);
             }
@@ -328,53 +344,43 @@
     // --------------------------------------------------------------------------------
 
     /**
-     * Updates the injected UI elements with the latest coordinates.
-     * This is called whenever the scan function finds valid coordinates.
+     * Updates all injected UI: coordinate displays, button visibility, and object buttons.
+     * Merged from updateNinaUI + updateObjectsUI for a single-pass update.
      */
-    function updateNinaUI() {
-        if (!coords) return;
-        
-        // Build the HTML for the coordinate display
-        let html = `<span class="ab-txt-blue">RA</span> ${coords.ra.toFixed(3)}° <span class="ab-txt-blue">DEC</span> ${coords.dec.toFixed(3)}°`;
-        if (coords.rot !== null) html += `<span class="ab-txt-pink">ROT</span> ${coords.rot.toFixed(1)}°`;
+    function updateUI() {
+        // Update coordinate display and button visibility
+        if (coords) {
+            let html = `<span class="ab-txt-blue">RA</span> ${coords.ra.toFixed(3)}° <span class="ab-txt-blue">DEC</span> ${coords.dec.toFixed(3)}°`;
+            if (coords.rot !== null) html += `<span class="ab-txt-pink">ROT</span> ${coords.rot.toFixed(1)}°`;
 
-        ninaEls.forEach(el => {
-            if (!document.body.contains(el)) return;
-            
-            // Handle different layout structures
-            if (el.classList.contains('ab-meta-section')) {
-                // New layout: show the button group
-                const grp = el.querySelector('.ab-btn-group');
-                if (grp) grp.classList.add('ab-visible');
-                return;
-            }
-            
-            // Classic layout: show list item and update text
-            el.style.display = 'list-item';
-            const lbl = el.querySelector('.ab-nina-coords');
-            if (lbl) lbl.innerHTML = html;
-        });
-    }
+            ninaEls.forEach(el => {
+                if (!document.body.contains(el)) return;
 
+                // Handle different layout structures
+                if (el.classList.contains('ab-meta-section')) {
+                    // New layout: show the button group
+                    el.querySelector('.ab-btn-group')?.classList.add('ab-visible');
+                    return;
+                }
 
-    /**
-     * Populates the object Stellarium button containers with detected objects.
-     * Called after link scanning in scan().
-     */
-    function updateObjectsUI() {
-        if (detectedObjects.length === 0) return;
-        document.querySelectorAll('.ab-obj-container').forEach(container => {
-            container.innerHTML = '';
-            detectedObjects.forEach(name => {
-                const entry = createEl('span', 'ab-obj-entry');
-                const img = createEl('img', 'ab-s-icon', '', { src: ICON_SRC, title: `Center in Stellarium: ${name}` });
-                const label = createEl('span', 'ab-obj-name', name);
-                entry.appendChild(img);
-                entry.appendChild(label);
-                entry.onclick = stopAndRun(() => sendStellariumName(name, img));
-                container.appendChild(entry);
+                // Classic layout: show list item and update text
+                el.style.display = 'list-item';
+                const lbl = el.querySelector('.ab-nina-coords');
+                if (lbl) lbl.innerHTML = html;
             });
-        });
+        }
+
+        // Populate object Stellarium button containers with detected objects
+        if (detectedObjects.size) {
+            document.querySelectorAll('.ab-obj-container').forEach(container => {
+                container.innerHTML = '';
+                detectedObjects.forEach(name => {
+                    const entry = mkEntry(ICON_SRC, name, `Center in Stellarium: ${name}`);
+                    entry.onclick = stopAndRun(() => sendStellariumName(name, entry.firstChild));
+                    container.appendChild(entry);
+                });
+            });
+        }
     }
 
     // --------------------------------------------------------------------------------
@@ -400,11 +406,9 @@
 
         // 1. Header row: title + cog
         const header = createEl('div', 'ab-section-header');
-        const title = createEl('span', 'ab-section-title', 'Send coordinates to:');
         const cog = createEl('span', 'ab-cog-inline', COG_SVG, { title: 'Script Settings' });
         cog.onclick = (e) => { e.preventDefault(); showConfig(); };
-        header.appendChild(title);
-        header.appendChild(cog);
+        header.append(createEl('span', 'ab-section-title', 'Send coordinates to:'), cog);
         section.appendChild(header);
 
         if (activeHosts.length) {
@@ -415,29 +419,19 @@
             const sendRow = createEl('div', 'ab-btn-row');
 
             // Stellarium button
-            const stelEntry = createEl('span', 'ab-obj-entry', '', { title: 'Center Coordinates in Stellarium' });
-            stelEntry.appendChild(createEl('img', 'ab-s-icon', '', { src: ICON_SRC }));
-            stelEntry.appendChild(createEl('span', 'ab-obj-name', 'Stellarium'));
-            stelEntry.onclick = stopAndRun(() => { if (coords) sendStellariumCoords(coords.ra, coords.dec, stelEntry); });
+            const stelEntry = mkEntry(ICON_SRC, 'Stellarium', 'Center Coordinates in Stellarium');
+            stelEntry.onclick = ifCoords(() => sendStellariumCoords(coords.ra, coords.dec, stelEntry));
             sendRow.appendChild(stelEntry);
 
             // NINA buttons
             activeHosts.forEach(host => {
-                const entry = createEl('span', 'ab-obj-entry', '', { title: `Send to ${host.name}` });
-                entry.appendChild(createEl('img', 'ab-s-icon', '', { src: NINA_ICON_SRC }));
-                entry.appendChild(createEl('span', 'ab-obj-name', host.name));
-                entry.onclick = stopAndRun(() => { if (coords) sendNina(host.url, coords.ra, coords.dec, entry); });
+                const entry = mkEntry(NINA_ICON_SRC, host.name, `Send to ${host.name}`);
+                entry.onclick = ifCoords(() => sendNina(host.url, coords.ra, coords.dec, entry));
                 sendRow.appendChild(entry);
             });
 
-            btnGroup.appendChild(sendRow);
-
-            // 3. Object Stellarium buttons (populated by updateObjectsUI)
-            const objLabel = createEl('div', 'ab-section-label', 'Focus in Stellarium:');
-            const objContainer = createEl('div', 'ab-obj-container');
-            btnGroup.appendChild(objLabel);
-            btnGroup.appendChild(objContainer);
-
+            // 3. Object Stellarium buttons (populated by updateUI)
+            btnGroup.append(sendRow, createEl('div', 'ab-section-label', 'Focus in Stellarium:'), createEl('div', 'ab-obj-container'));
             section.appendChild(btnGroup);
             ninaEls.push(section);
         }
@@ -472,23 +466,19 @@
             const row = createEl('div', 'ab-nina-row');
 
             // 3. Stellarium Button
-            const stelBtn = createEl('a', 'ab-nina-btn', '', { title: 'Center Coordinates in Stellarium' });
             const stelPill = createEl('div', 'ab-nina-pill');
             stelPill.appendChild(createEl('img', 'ab-pill-icon', '', { src: ICON_SRC }));
+            const stelBtn = createEl('a', 'ab-nina-btn', '', { title: 'Center Coordinates in Stellarium' });
             stelBtn.appendChild(stelPill);
-            stelBtn.onclick = stopAndRun(() => { if (coords) sendStellariumCoords(coords.ra, coords.dec, stelPill); });
+            stelBtn.onclick = ifCoords(() => sendStellariumCoords(coords.ra, coords.dec, stelPill));
             row.appendChild(stelBtn);
 
             // 4. NINA Buttons
             activeHosts.forEach(host => {
-                const btn = createEl('a', 'ab-nina-btn', '', { title: `Send to ${host.name}` });
-                const entry = createEl('span', 'ab-obj-entry');
-                const ninaImg = createEl('img', 'ab-s-icon', '', { src: NINA_ICON_SRC });
-                const nameSpan = createEl('span', 'ab-obj-name', host.name);
-                entry.appendChild(ninaImg);
-                entry.appendChild(nameSpan);
+                const entry = mkEntry(NINA_ICON_SRC, host.name, `Send to ${host.name}`);
+                const btn = createEl('a', 'ab-nina-btn');
                 btn.appendChild(entry);
-                btn.onclick = stopAndRun(() => { if (coords) sendNina(host.url, coords.ra, coords.dec, entry); });
+                btn.onclick = ifCoords(() => sendNina(host.url, coords.ra, coords.dec, entry));
                 row.appendChild(btn);
             });
 
@@ -509,13 +499,23 @@
      * 2. Coordinates (RA/DEC/Rotation) for the current image.
      */
     function scan() {
+        // SPA navigation detection - reset state on URL change
+        const url = location.href;
+        if (url !== lastUrl) {
+            lastUrl = url;
+            coords = null;
+            detectedObjects.clear();
+            ninaEls.length = 0;
+            document.getElementById('ab-nina-script-injected')?.remove();
+        }
+
         injectConfig(); // Ensure UI is present
 
         // --- Link Scanning ---
         // Looks for text like "M31" or "NGC 7000" in the Objects section and collects names
         // for the Stellarium buttons in the "Send coordinates to:" section.
         // Clear previous detections (objects persist across SPA navigations otherwise).
-        detectedObjects.length = 0;
+        detectedObjects.clear();
         document.querySelectorAll('.objects-in-field a, .subtitle a').forEach(link => {
             if (seen.has(link)) return;
             const txt = (link.textContent || '').trim();
@@ -527,7 +527,7 @@
             // Check if match covers most of the text to avoid false positives in long sentences
             if (match && match[0].length >= txt.length - 5) {
                 const name = fmtName(match[1], match[2]);
-                if (!detectedObjects.includes(name)) detectedObjects.push(name);
+                detectedObjects.add(name);
                 seen.add(link);
 
                 // For old layout: inject a small inline Stellarium icon after the link
@@ -540,63 +540,59 @@
                 }
             }
         });
-        updateObjectsUI();
 
-        // --- Coordinate Extraction ---
-        let ra = null, dec = null, rot = null;
+        // --- Coordinate Extraction (skip if already found for this page) ---
+        if (!coords) {
+            let ra = null, dec = null, rot = null;
 
-        // Method 1: Classic layout via <abbr> tags
-        const rAbbr = document.querySelector('abbr.ra-coordinates');
-        const dAbbr = document.querySelector('abbr.dec-coordinates');
-        if (rAbbr && dAbbr) {
-            ra = parseFloat(rAbbr.getAttribute('title'));
-            dec = parseFloat(dAbbr.getAttribute('title'));
-            
-            // Orientation extraction
-            const orientEl = [...document.querySelectorAll('strong.card-label')]
-                .find(l => l.textContent.trim() === 'Orientation:');
-            if (orientEl) {
-                const m = orientEl.parentElement.textContent.match(/([-\d.]+)\s*degrees/);
+            // Method 1: Classic layout via <abbr> tags
+            const rAbbr = document.querySelector('abbr.ra-coordinates');
+            const dAbbr = document.querySelector('abbr.dec-coordinates');
+            if (rAbbr && dAbbr) {
+                ra = parseFloat(rAbbr.getAttribute('title'));
+                dec = parseFloat(dAbbr.getAttribute('title'));
+
+                // Orientation extraction
+                const m = [...document.querySelectorAll('strong.card-label')]
+                    .find(l => l.textContent.trim() === 'Orientation:')
+                    ?.parentElement.textContent.match(/([-\d.]+)\s*degrees/);
                 if (m) rot = parseFloat(m[1]);
             }
-        }
 
-        // Method 2: New layout via metadata components (HMS/DMS parsing)
-        if (ra === null || dec === null || isNaN(ra) || isNaN(dec)) {
-            const coordsEl = document.querySelector('span.coordinates');
-            if (coordsEl) {
-                const raEl = coordsEl.querySelector('span.ra');
-                const decEl = coordsEl.querySelector('span.dec');
-                if (raEl && decEl) {
-                    // Convert HMS to Degrees
-                    ra = qf(raEl, '.hours') * 15 + qf(raEl, '.minutes') * (15 / 60) + qf(raEl, '.seconds') * (15 / 3600);
-                    
-                    // Convert DMS to Degrees
-                    const dDeg = qf(decEl, '.degrees');
-                    const sign = dDeg < 0 ? -1 : 1;
-                    dec = sign * (Math.abs(dDeg) + qf(decEl, '.minutes') / 60 + qf(decEl, '.seconds') / 3600);
+            // Method 2: New layout via metadata components (HMS/DMS parsing)
+            if (!validCoord(ra) || !validCoord(dec)) {
+                const coordsEl = document.querySelector('span.coordinates');
+                if (coordsEl) {
+                    const raEl = coordsEl.querySelector('span.ra');
+                    const decEl = coordsEl.querySelector('span.dec');
+                    if (raEl && decEl) {
+                        // Convert HMS to Degrees
+                        ra = qf(raEl, '.hours') * 15 + qf(raEl, '.minutes') * (15 / 60) + qf(raEl, '.seconds') * (15 / 3600);
 
-                    // Rotation from location-arrow icon proximity
-                    const locArrow = document.querySelector('fa-icon[icon="location-arrow"]');
-                    if (locArrow) {
-                        const metaItem = locArrow.closest('.metadata-item');
-                        if (metaItem) {
-                            const label = metaItem.querySelector('.metadata-label');
-                            if (label) {
-                                const rotMatch = label.textContent.trim().match(/([-\d.]+)/);
-                                if (rotMatch) rot = parseFloat(rotMatch[1]);
-                            }
+                        // Convert DMS to Degrees
+                        const dDeg = qf(decEl, '.degrees');
+                        const sign = dDeg < 0 ? -1 : 1;
+                        dec = sign * (Math.abs(dDeg) + qf(decEl, '.minutes') / 60 + qf(decEl, '.seconds') / 3600);
+
+                        // Rotation from location-arrow icon proximity (flattened with optional chaining)
+                        const rotLabel = document.querySelector('fa-icon[icon="location-arrow"]')
+                            ?.closest('.metadata-item')?.querySelector('.metadata-label');
+                        if (rotLabel) {
+                            const rotMatch = rotLabel.textContent.trim().match(/([-\d.]+)/);
+                            if (rotMatch) rot = parseFloat(rotMatch[1]);
                         }
                     }
                 }
             }
+
+            // If valid coordinates found, update global state
+            if (validCoord(ra) && validCoord(dec)) {
+                coords = { ra, dec, rot };
+            }
         }
 
-        // If valid coordinates found, update global state and UI
-        if (ra !== null && dec !== null && !isNaN(ra) && !isNaN(dec)) {
-            coords = { ra, dec, rot };
-            updateNinaUI();
-        }
+        // Single-pass UI update for coordinates and object buttons
+        updateUI();
     }
 
     // --------------------------------------------------------------------------------

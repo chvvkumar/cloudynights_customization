@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AstroBin to Stellarium & NINA (Optimized)
 // @namespace    http://tampermonkey.net/
-// @version      15.0
+// @version      16.0
 // @description  Adds Stellarium focus icons and NINA framing buttons to AstroBin. Supports both classic and new Angular layouts.
 // @author       Dev
 // @match        https://www.astrobin.com/*
@@ -27,6 +27,9 @@
     // Base64 encoded icon used for the Stellarium button.
     // This is embedded directly to avoid external dependencies or broken links.
     const ICON_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAE/0lEQVR4nO2WXUxbZRzGudJrvewLNOe09Lulh7YwAqWlLYl8rCibibotAbOhYzgkkxldtjHGpuDU9ZzS8jG+RNxkw8R9mBjQ7MKwyZjMjC2b88LEG+fmhXMXZhEecw6Uz56O069p0n/yJISWl+f3/p/3/75paalKVapS9b8oSzpnZGQ+HyPzzTCEfcgQFnHWQ2Ftme+4Kf24IW7GlUrf0wxhAwxhZxNgGuFkJr5/zIT163QHn4rdvIz9Nh6msuUsDDoOWoaDxjovLcMJvzPLRUBkvm9igjATXzAe5g06FhobJyqtlQcR7QYXfeZFYjM4OLFu8zqTuHHNKpmtHbDJ/WvilJ3h10sGEA5szDu/fvMaGwdTQQBtH46Hi9JH0gEIeyO0wOnRKxg5PQkp3eAzL8W8xsaBKQri6s07KLX3rVxPxl6PAsD3V2gB3vznI5MJ3X2NjYPL24/pWz/j/WMru2Am7INoOhBTfLRm6QDbG74QAM6NX1uzXtIBhFEpEaDzk+8EgEvXbv8HACzSzDvKT+DKzE8CwMT0reQBiB1iqRHqGZ4QzPM6Ozb95Dsg5RDvPXRh0Tyvo21jsQOUqAfgUfXDreqHU9kLO92NDfIALOlc2N1f3Qn+ecDfsI8z39R8QRidIfP8z2WOvvgAhJNH3Y/hoe+RJw+sowvid4GjondFbEIKd5HFFWC5nFm9yM3siAiRbfELN6zZHoCrsl8Ylfy0mbqxtOvTCxoauQxrJpc8gJD4eDEk/D/m3zb8ri6PyWpdvXlH+I6Y+YQD8CrO6oMlwy86mfjnAX/D8hPm8o+3hVl/dmxaOLDhMp90AF4uVR+sGZEjFa3SkgHAy63iOyEehUjKIxxKSQc2kyCqSSd2kC7sJN2oI92JATj56aRonNZrOoew8JAObCOdglExJa0DIRUKBzuyeSfxo5p0LZrcQwfRlvMxOovacbL0CM54W/DlC4dwflNzrAB98Kh7JAF41AOwiYxYC2GxiQTmjad347DJh6GSoxh/eT+u72zCr00N+LO5Dn+3vo7ZtlqgfYd0gALVPhgVG5FFm0BTNCiKAk2poaELwCi3oDCrGSXq/siTSdm7dqwSdjEu+3V+nCptxQ+1e/HHgV2ArwH4rA041wNcPANMnAcmvwamxqUD8IYfJxWdA6tyO1yqoChEbubSjW0jHGpIF+ozuuEv+ACXat7Bg5Y6YPAwMH4KmBoTzIZTQgBCUlBqoSsudWANgENxYuGwcthKOtEg78Lwc0fwy55GoGcfcHFU1HTSABZBaDVylNtWdIR/O/EPwCoSwJvyToxubMFvB3ZjJtiKr4LHMPDeQbS/3Yi3al9F9UsvYsvmKlR5K1BZUQ632w2XywW325UcgKWOaGBRVsOlmu+Ik2axVfcuXit5BTXeMngWjLkkSDIAf2BjgZjvSBbMhnzY7UWSDbuWyekomZMMoKZtc7ECLJfRaER+fj6Ki4vXbdzhcIBhGGg1hlnJAAb6+d/jCRCSUqmEyWRCbm4uCgsL4XQ6Vxi22+2w2WzQ6/VQKBTC3+i1uXclA1jo+t00Nb9AokXTtCCxzxhdeb1kgPkueO8nA4CKIL02715atLVB1/ishnI8elLm1SrjI6Ox/JmoAUIQBsp7P1lxohZiY9Dm3YvZ/PKyKHa9oacq76oo2xxNqeJuWqFQQJWlmeMPrFlTVhc346lKVapSlZbI+hcf/WQs2PjpSAAAAABJRU5ErkJggg==";
+
+    // SVG icon used for the NINA button (inline data URI for reliability).
+    const NINA_ICON_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='22' fill='%231e1e2e' stroke='%2389b4fa' stroke-width='2.5'/%3E%3Cpath d='M16 34V14l16 20V14' stroke='%2389b4fa' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E";
 
     // Color palette for consistent styling across the injected UI.
     const CLR = { 
@@ -105,11 +108,24 @@
         .ab-txt-blue + .ab-txt-blue { margin-left: 6px; }
         .ab-txt-pink { color: #f5c2e7; margin-left: 6px; }
         
-        /* New Layout Specifics */
-        .ab-nina-meta-item, .ab-meta-cog { cursor: pointer; }
-        .ab-nina-meta-item { display: none; }
-        .ab-nina-meta-header { cursor: default; width: 100%; flex-basis: 100%; }
-        .ab-meta-cog:hover { color: ${CLR.blue}; }
+        /* New Layout - Self-contained section */
+        .ab-meta-section { padding: 10px 15px; }
+        .ab-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .ab-section-title { font-size: 12px; color: #a6adc8; font-weight: 600; }
+        .ab-cog-inline { cursor: pointer; display: inline-flex; align-items: center; opacity: 0.5; transition: opacity 0.2s; }
+        .ab-cog-inline:hover { opacity: 1; color: ${CLR.blue}; }
+        .ab-cog-inline .ab-cog-svg { width: 12px; height: 12px; }
+        .ab-btn-group { display: none; }
+        .ab-btn-group.ab-visible { display: block; }
+        .ab-btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .ab-btn-row:last-child { margin-bottom: 0; }
+        .ab-section-label { font-size: 11px; color: #6c7086; margin-bottom: 6px; }
+
+        /* Shared button entries (Send-to + Object buttons) */
+        .ab-obj-container { display: flex; flex-wrap: wrap; gap: 6px; }
+        .ab-obj-entry { display: inline-flex; align-items: center; gap: 4px; background: #313244; padding: 4px 8px; border-radius: 6px; border: 1px solid ${CLR.border}; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+        .ab-obj-entry:hover { border-color: ${CLR.blue}; background: #45475a; }
+        .ab-obj-name { font-size: 11px; color: ${CLR.text}; white-space: nowrap; }
     `;
 
     // SVG for the settings cog icon.
@@ -136,7 +152,10 @@
     
     // Array to hold references to injected NINA UI elements for updates.
     const ninaEls = [];
-    
+
+    // Array to hold detected astronomical object names for the Stellarium object buttons.
+    const detectedObjects = [];
+
     // Holds the currently detected coordinates (RA, DEC, Rotation).
     let coords = null;
 
@@ -189,13 +208,6 @@
             pill.style.borderColor = color;
             setTimeout(() => { pill.style.borderColor = CLR.border; }, 3000);
         };
-    };
-
-    // Mirrors Angular's _ngcontent attributes from a source element to a destination element.
-    // This allows injected elements to inherit Angular view encapsulation styles.
-    const mirrorNg = (src, dst) => {
-        for (const a of src.attributes)
-            if (a.name.startsWith('_ngcontent')) dst.setAttribute(a.name, a.value);
     };
 
     // Formats catalog names for consistency (e.g., standardizing Sharpless names).
@@ -311,22 +323,6 @@
     // --- UI HELPERS ---
     // --------------------------------------------------------------------------------
 
-    // Creates the small Stellarium icon appended to object links.
-    function createIcon(name) {
-        const wrap = createEl('span', 'ab-s-wrap');
-        const img = createEl('img', 'ab-s-icon', '', { src: ICON_SRC, title: `Center in Stellarium: ${name}` });
-        wrap.appendChild(img);
-        wrap.onclick = stopAndRun(() => sendStellariumName(name, img));
-        return wrap;
-    }
-
-    // Creates a pill-shaped button for the NINA interface.
-    function makePill(label, wide) {
-        const pill = createEl('div', 'ab-nina-pill' + (wide ? ' ab-nina-pill-wide' : ''),
-            `<span class="ab-pill-label">${label}</span>`);
-        return pill;
-    }
-
     // --------------------------------------------------------------------------------
     // --- UI UPDATES ---
     // --------------------------------------------------------------------------------
@@ -347,8 +343,9 @@
             
             // Handle different layout structures
             if (el.classList.contains('ab-meta-section')) {
-                // New layout: show hidden items
-                el.querySelectorAll('.ab-nina-meta-item').forEach(item => item.style.removeProperty('display'));
+                // New layout: show the button group
+                const grp = el.querySelector('.ab-btn-group');
+                if (grp) grp.classList.add('ab-visible');
                 return;
             }
             
@@ -356,6 +353,26 @@
             el.style.display = 'list-item';
             const lbl = el.querySelector('.ab-nina-coords');
             if (lbl) lbl.innerHTML = html;
+        });
+    }
+
+    /**
+     * Populates the object Stellarium button containers with detected objects.
+     * Called after link scanning in scan().
+     */
+    function updateObjectsUI() {
+        if (detectedObjects.length === 0) return;
+        document.querySelectorAll('.ab-obj-container').forEach(container => {
+            container.innerHTML = '';
+            detectedObjects.forEach(name => {
+                const entry = createEl('span', 'ab-obj-entry');
+                const img = createEl('img', 'ab-s-icon', '', { src: ICON_SRC, title: `Center in Stellarium: ${name}` });
+                const label = createEl('span', 'ab-obj-name', name);
+                entry.appendChild(img);
+                entry.appendChild(label);
+                entry.onclick = stopAndRun(() => sendStellariumName(name, img));
+                container.appendChild(entry);
+            });
         });
     }
 
@@ -377,52 +394,53 @@
         const metaStrip = document.querySelector('div.metadata-striped');
         if (!metaStrip) return;
 
-        const section = createEl('div', 'metadata-section ab-meta-section', '', { id: 'ab-nina-script-injected' });
+        const section = createEl('div', 'ab-meta-section', '', { id: 'ab-nina-script-injected' });
         const activeHosts = CFG.nina.filter(h => h.enabled && h.url);
 
+        // 1. Header row: title + cog
+        const header = createEl('div', 'ab-section-header');
+        const title = createEl('span', 'ab-section-title', 'Send coordinates to:');
+        const cog = createEl('span', 'ab-cog-inline', COG_SVG, { title: 'Script Settings' });
+        cog.onclick = (e) => { e.preventDefault(); showConfig(); };
+        header.appendChild(title);
+        header.appendChild(cog);
+        section.appendChild(header);
+
         if (activeHosts.length) {
-            // 1. Create Header
-            const header = createEl('div', 'metadata-header d-flex justify-content-between ab-nina-meta-item ab-nina-meta-header');
-            const existingHeader = metaStrip.querySelector('.metadata-header');
-            const headerSpan = createEl('span', '', ' Send coordinates to: ');
-            
-            // Attempt to mimic existing Angular styles
-            if (existingHeader) {
-                mirrorNg(existingHeader, header);
-                const existingSpan = existingHeader.querySelector('span');
-                if (existingSpan) mirrorNg(existingSpan, headerSpan);
-            }
-            header.appendChild(headerSpan);
-            section.appendChild(header);
+            // 2. Button group (hidden until coords are found)
+            const btnGroup = createEl('div', 'ab-btn-group');
 
-            // 2. Create Stellarium Button
-            const stelItem = createEl('div', 'metadata-item ab-nina-meta-item', '', { title: 'Center Coordinates in Stellarium' });
-            const stelImg = createEl('img', 'ab-s-icon', '', { src: ICON_SRC });
-            stelItem.appendChild(stelImg);
-            stelItem.onclick = stopAndRun(() => { if (coords) sendStellariumCoords(coords.ra, coords.dec, stelItem); });
-            section.appendChild(stelItem);
+            // Send-to buttons row
+            const sendRow = createEl('div', 'ab-btn-row');
 
-            // 3. Create NINA Buttons
+            // Stellarium button
+            const stelEntry = createEl('span', 'ab-obj-entry', '', { title: 'Center Coordinates in Stellarium' });
+            stelEntry.appendChild(createEl('img', 'ab-s-icon', '', { src: ICON_SRC }));
+            stelEntry.appendChild(createEl('span', 'ab-obj-name', 'Stellarium'));
+            stelEntry.onclick = stopAndRun(() => { if (coords) sendStellariumCoords(coords.ra, coords.dec, stelEntry); });
+            sendRow.appendChild(stelEntry);
+
+            // NINA buttons
             activeHosts.forEach(host => {
-                const item = createEl('div', 'metadata-item ab-nina-meta-item', '', { title: `Send to ${host.name}` });
-                const iconDiv = createEl('div', 'metadata-icon');
-                const pill = makePill(host.name[0].toUpperCase(), false);
-                iconDiv.appendChild(pill);
-                item.appendChild(iconDiv);
-                item.onclick = stopAndRun(() => { if (coords) sendNina(host.url, coords.ra, coords.dec, pill); });
-                section.appendChild(item);
+                const entry = createEl('span', 'ab-obj-entry', '', { title: `Send to ${host.name}` });
+                entry.appendChild(createEl('img', 'ab-s-icon', '', { src: NINA_ICON_SRC }));
+                entry.appendChild(createEl('span', 'ab-obj-name', host.name));
+                entry.onclick = stopAndRun(() => { if (coords) sendNina(host.url, coords.ra, coords.dec, entry); });
+                sendRow.appendChild(entry);
             });
 
+            btnGroup.appendChild(sendRow);
+
+            // 3. Object Stellarium buttons (populated by updateObjectsUI)
+            const objLabel = createEl('div', 'ab-section-label', 'Focus in Stellarium:');
+            const objContainer = createEl('div', 'ab-obj-container');
+            btnGroup.appendChild(objLabel);
+            btnGroup.appendChild(objContainer);
+
+            section.appendChild(btnGroup);
             ninaEls.push(section);
         }
 
-        // 4. Config Cog Icon
-        const cogItem = createEl('div', 'metadata-item ab-meta-cog', '', { title: 'Script Settings' });
-        const cogIconDiv = createEl('div', 'metadata-icon');
-        cogIconDiv.innerHTML = COG_SVG;
-        cogItem.appendChild(cogIconDiv);
-        cogItem.onclick = (e) => { e.preventDefault(); showConfig(); };
-        section.appendChild(cogItem);
         metaStrip.appendChild(section);
     }
 
@@ -463,13 +481,22 @@
             // 4. NINA Buttons
             activeHosts.forEach(host => {
                 const btn = createEl('a', 'ab-nina-btn', '', { title: `Send to ${host.name}` });
-                const pill = makePill(host.name[0].toUpperCase(), false);
-                btn.appendChild(pill);
-                btn.onclick = stopAndRun(() => { if (coords) sendNina(host.url, coords.ra, coords.dec, pill); });
+                const entry = createEl('span', 'ab-obj-entry');
+                const ninaImg = createEl('img', 'ab-s-icon', '', { src: NINA_ICON_SRC });
+                const nameSpan = createEl('span', 'ab-obj-name', host.name);
+                entry.appendChild(ninaImg);
+                entry.appendChild(nameSpan);
+                btn.appendChild(entry);
+                btn.onclick = stopAndRun(() => { if (coords) sendNina(host.url, coords.ra, coords.dec, entry); });
                 row.appendChild(btn);
             });
 
             wrap.appendChild(row);
+
+            // 5. Object Stellarium buttons (populated by updateObjectsUI)
+            const objRow = createEl('div', 'ab-nina-row ab-obj-container');
+            wrap.appendChild(objRow);
+
             ninaLi.appendChild(wrap);
             cogLi.parentNode.insertBefore(ninaLi, cogLi);
             ninaEls.push(ninaLi);
@@ -489,23 +516,26 @@
         injectConfig(); // Ensure UI is present
 
         // --- Link Scanning ---
-        // Looks for text like "M31" or "NGC 7000" in <a> tags and appends the Stellarium icon.
-        document.querySelectorAll('a').forEach(link => {
+        // Looks for text like "M31" or "NGC 7000" in the Objects section and collects names
+        // for the Stellarium buttons in the "Send coordinates to:" section.
+        // Clear previous detections (objects persist across SPA navigations otherwise).
+        detectedObjects.length = 0;
+        document.querySelectorAll('.objects-in-field a').forEach(link => {
             if (seen.has(link)) return;
             const txt = (link.textContent || '').trim();
             if (txt.length < 2 || txt.length > 30) return; // Optimization: skip short/long text
-            
+
             CATALOG_REGEX.lastIndex = 0;
             const match = CATALOG_REGEX.exec(txt);
-            
+
             // Check if match covers most of the text to avoid false positives in long sentences
             if (match && match[0].length >= txt.length - 5) {
-                const icon = createIcon(fmtName(match[1], match[2]));
-                if (link.nextSibling) link.parentNode.insertBefore(icon, link.nextSibling);
-                else link.parentNode.appendChild(icon);
+                const name = fmtName(match[1], match[2]);
+                if (!detectedObjects.includes(name)) detectedObjects.push(name);
                 seen.add(link);
             }
         });
+        updateObjectsUI();
 
         // --- Coordinate Extraction ---
         let ra = null, dec = null, rot = null;

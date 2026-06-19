@@ -1,11 +1,10 @@
 // ==UserScript==
 // @name         AstroBin to Stellarium & NINA (Optimized)
 // @namespace    http://tampermonkey.net/
-// @version      18.0
+// @version      15.0
 // @description  Adds Stellarium focus icons and NINA framing buttons to AstroBin. Supports both classic and new Angular layouts.
 // @author       Dev
-// @match        https://www.astrobin.com/*
-// @match        https://app.astrobin.com/*
+// @match        https://*.astrobin.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -32,7 +31,7 @@
     const NINA_ICON_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='22' fill='%231e1e2e' stroke='%2389b4fa' stroke-width='2.5'/%3E%3Cpath d='M16 34V14l16 20V14' stroke='%2389b4fa' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E";
 
     // Color palette for consistent styling across the injected UI.
-    const CLR = { 
+    const CLR = {
         ok: '#a6e3a1',    // Green for success
         err: '#f38ba8',   // Red for error
         border: '#45475a',// Dark grey for borders
@@ -45,69 +44,69 @@
     const CSS = `
         /* Hidden by default, shown when injected */
         .ab-nina-li { display: none; }
-        
+
         /* Wrapper for the classic layout injection */
         .ab-nina-wrap { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3px; height: 100%; padding: 0 12px; border-left: 1px solid #444; margin-left: 5px; pointer-events: auto; }
-        
+
         /* Coordinate display text */
         .ab-nina-coords { font-family: monospace; font-size: 10px; color: #bac2de; white-space: nowrap; line-height: 1; margin-bottom: 1px; }
-        
+
         /* Row container for buttons */
         .ab-nina-row { display: flex; align-items: center; justify-content: space-evenly; width: 100%; gap: 6px; }
-        
+
         /* Shared interactive card base (pill + object entry) */
         .ab-nina-pill, .ab-obj-entry { background: #313244; border: 1px solid ${CLR.border}; transition: border-color 0.2s, background 0.2s; }
 
         /* Pill-shaped buttons for NINA instances */
         .ab-nina-pill { display: flex; align-items: center; justify-content: center; width: 34px; height: 20px; border-radius: 10px; box-sizing: border-box; }
         .ab-nina-pill-wide { width: auto; padding: 0 8px; }
-        
+
         /* General button styling */
         .ab-nina-btn { cursor: pointer; text-decoration: none; }
-        
+
         /* Stellarium icon wrapper */
         .ab-s-wrap { display: inline-flex; align-items: center; cursor: pointer; margin-left: 5px; }
         .ab-s-icon { width: 18px; height: 18px; vertical-align: middle; }
-        
+
         /* Pill internal icon and label */
         .ab-pill-icon { width: 14px; height: 14px; opacity: 0.9; }
         .ab-pill-label { font-size: 9px; font-weight: bold; color: ${CLR.text}; }
-        
+
         /* Cog/Settings icon container */
         .ab-cog-li { z-index: 9999; position: relative; }
         .ab-cog-link { cursor: pointer; display: flex; align-items: center; height: 100%; padding: 0 10px; position: relative; z-index: 10000; }
         .ab-cog-svg { width: 16px; height: 16px; fill: currentColor; }
-        
+
         /* Configuration Modal Overlay */
         .ab-cfg-ol { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 999999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-        
+
         /* Configuration Modal Window */
         .ab-cfg-win { background: #1e1e2e; color: ${CLR.text}; border-radius: 12px; padding: 24px; min-width: 420px; font-family: system-ui, sans-serif; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #313244; }
-        
+
         /* Config Title */
         .ab-cfg-title { margin: 0 0 20px; font-size: 18px; color: ${CLR.blue}; font-weight: 600; }
-        
+
         /* Config Labels and Fields */
         .ab-cfg-label { display: block; font-size: 12px; color: #9399b2; margin-bottom: 6px; }
         .ab-cfg-field { margin-bottom: 20px; }
-        
+
         /* Config Row (for NINA instances) */
         .ab-cfg-row { margin-bottom: 12px; padding: 12px; background: #313244; border-radius: 8px; display: grid; grid-template-columns: 30px 1fr 2fr; gap: 10px; align-items: center; }
-        
+
         /* Config Inputs */
         .ab-cfg-in { padding: 6px; background: #181825; color: ${CLR.text}; border: 1px solid ${CLR.border}; border-radius: 4px; font-size: 12px; width: 100%; }
-        
+
         /* Config Footer (Buttons) */
         .ab-cfg-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
         .ab-cfg-btn, .ab-cfg-btn-save { padding: 8px 20px; border-radius: 6px; cursor: pointer; }
         .ab-cfg-btn { background: transparent; color: #a6adc8; border: 1px solid ${CLR.border}; }
         .ab-cfg-btn-save { padding: 8px 24px; background: ${CLR.blue}; color: #11111b; border: none; font-weight: 600; }
-        
+
         /* Utility text colors */
         .ab-txt-blue { color: ${CLR.blue}; }
         .ab-txt-blue + .ab-txt-blue { margin-left: 6px; }
         .ab-txt-pink { color: #f5c2e7; margin-left: 6px; }
-        
+
         /* New Layout - Self-contained section */
         .ab-meta-section { padding: 10px 15px; }
         .ab-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
@@ -132,7 +131,7 @@
     const COG_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="ab-cog-svg"><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.1-28.2 18.2-44 24l-10.5 57.5c-1.7 9.3-8.9 16.5-18.2 17.8c-12.8 1.8-26 2.8-39.4 2.8s-26.5-.9-39.4-2.8c-9.4-1.3-16.5-8.5-18.2-17.8l-10.5-57.5c-15.8-5.8-30.7-13.9-44-24l-55.7 17.7c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.1 28.2-18.2 44-24l10.5-57.5c1.7-9.3 8.9-16.5 18.2-17.8C224.5 .9 237.7 0 251.1 0h9.8c12.8 0 26 .9 39.4 2.8c9.4 1.3 16.5 8.5 18.2 17.8l10.5 57.5c15.8 5.8 30.7 13.9 44 24l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></svg>';
 
     // --- STATE & SETUP ---
-    
+
     // CFG object holds the user configuration for Stellarium and NINA instances.
     // It retrieves values from Tampermonkey storage (GM_getValue) or defaults to localhosts.
     const CFG = {
@@ -146,10 +145,10 @@
 
     // Regex to identify astronomical catalog names in text (e.g., M31, NGC 7000).
     const CATALOG_REGEX = /\b(M|NGC|IC|Mel|Cr|Col|Sharpless|Sh2|LBN|LDN|Abell|HD|SAO|HIP|B|vdB|UGC|PGC|ESO|Mrk|Gum|RCW)\s*-?\s*(\d+)\b/ig;
-    
+
     // WeakSet to track processed links to avoid duplicates (allows GC of detached DOM nodes).
     const seen = new WeakSet();
-    
+
     // Array to hold references to injected NINA UI elements for updates.
     const ninaEls = [];
 
@@ -173,7 +172,7 @@
     // --------------------------------------------------------------------------------
     // --- UTILITIES ---
     // --------------------------------------------------------------------------------
-    
+
     const log  = (...a) => console.log('[AB-Script]', ...a);
     const warn = (...a) => console.warn('[AB-Script]', ...a);
     const logErr = (...a) => console.error('[AB-Script]', ...a);
@@ -183,7 +182,7 @@
 
     // Standard headers for form data.
     const FORM_HDR = { "Content-Type": "application/x-www-form-urlencoded" };
-    
+
     // Specialized wrapper for posting data to Stellarium API.
     const stelPost = (path, data, cb, errCb) => GM_xmlhttpRequest({
         method: "POST", url: `${CFG.stellarium}/api/${path}`, data, headers: FORM_HDR,
@@ -250,7 +249,7 @@
         if (!pill) return;
         log(`Sending to NINA (${host}): RA=${ra}, DEC=${dec}`);
         const reset = pillFeedback(pill);
-        
+
         // Step 1: Set Coordinates
         httpGet(`${host}/v2/api/framing/set-coordinates?RAangle=${ra}&DecAngle=${dec}`, (res) => {
             log(`NINA Response (${host}): ${res.status} ${res.statusText}`);
@@ -279,11 +278,11 @@
         if (!pill) return;
         log(`Sending Coords to Stellarium: RA=${ra}, DEC=${dec}`);
         const reset = pillFeedback(pill);
-        
+
         // Execute a script in Stellarium to move the view.
         const script = `core.moveToRaDecJ2000("${ra.toFixed(6)}d", "${dec.toFixed(6)}d", 3);`;
         log(`Running Stellarium script: ${script}`);
-        
+
         stelPost('scripts/direct', `code=${encodeURIComponent(script)}`, (res) => {
             log(`Script Response: ${res.status} ${res.statusText}`);
             if (res.status === 200) {
@@ -308,7 +307,7 @@
     function sendStellariumName(name, img) {
         if (img) img.style.opacity = '0.5';
         log(`Searching Object in Stellarium: ${name}`);
-        
+
         // Animation helper for success/failure visual cue
         const anim = (ok) => {
             if (!img) return;
@@ -318,7 +317,7 @@
                 : 'sepia(100%) hue-rotate(-50deg) saturate(500%)'; // Reddish
             setTimeout(() => { img.style.filter = 'none'; }, 2000);
         };
-        
+
         // Use Stellarium's focus API to find the object
         stelPost('main/focus', `target=${encodeURIComponent(name)}`, (res) => {
             log(`Object Search Response: ${res.status}`);
@@ -448,7 +447,7 @@
         if (!uploadBtn) return;
 
         const parent = uploadBtn.parentElement;
-        
+
         // 1. Create Config Cog
         const cogLi = createEl('li', 'd-none d-lg-block ab-cog-li', '', { id: 'ab-nina-script-injected' });
         const cog = createEl('a', 'ab-cog-link', '<i class="icon icon-cog"></i>');
@@ -628,10 +627,10 @@
         document.body.appendChild(ov);
 
         const $ = (sel) => d.querySelector(sel);
-        
+
         // Cancel Action
         $('#cfg-x').onclick = () => ov.remove();
-        
+
         // Save Action
         $('#cfg-s').onclick = () => {
             GM_setValue('stellariumHost', $('#cfg-stel').value.trim());
@@ -654,11 +653,11 @@
     // Debounce the scanner to avoid performance hits on rapid DOM changes (common in Angular apps).
     let scanTimer = null;
     const debouncedScan = () => { clearTimeout(scanTimer); scanTimer = setTimeout(scan, 300); };
-    
+
     // Observer to detect page navigation and dynamic content loading.
     const observer = new MutationObserver(debouncedScan);
     observer.observe(document.body, { childList: true, subtree: true });
-    
+
     // Initial scan run.
     scan();
 })();

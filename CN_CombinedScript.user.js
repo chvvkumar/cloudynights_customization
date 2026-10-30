@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar & Theming
 // @namespace    http://tampermonkey.net/
-// @version      8.2
+// @version      8.3
 // @description  Optimized: Dark/Light themes, collapsible sidebar/header. Enhanced performance, smaller size, cleaner code.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
@@ -151,8 +151,9 @@ body[data-theme] blockquote{background-color:var(--tertiary-bg)!important;border
 #ipsLayout_sidebar{width:300px;min-width:300px;transition:all .3s ease-in-out}
 .cn-sidebar-collapsed #ipsLayout_sidebar{width:0!important;min-width:0!important;margin:0!important;padding:0!important;display:none!important}
 .cn-sidebar-collapsed #ipsLayout_mainArea{width:100%!important;max-width:100%!important;flex:1 1 100%!important;margin-right:0!important;padding-right:0!important;display:block!important}
-#cn-theme-selector-li button select{-webkit-appearance:none;-moz-appearance:none;appearance:none;background:transparent!important;border:none!important;color:transparent!important;position:absolute;top:0;left:0;width:100%;height:100%;padding:0;margin:0;cursor:pointer;z-index:2}
+#cn-theme-selector-li button select{-webkit-appearance:none;-moz-appearance:none;appearance:none;background:transparent!important;border:none!important;color:transparent!important;position:absolute;top:0;right:0;width:200px;height:100%;padding:0;margin:0;cursor:pointer;z-index:2;clip-path:inset(0 0 0 calc(100% - 32px))}
 #cn-theme-selector-li button{position:relative;display:flex;align-items:center;padding:5px 9px!important}
+#cn-theme-selector-li button select,#cn-theme-selector-li button select optgroup,#cn-theme-selector-li button select option{font-size:13px!important;line-height:1.4!important}
 #cn-theme-selector-li button select optgroup,#cn-theme-selector-li button select option{background-color:#1E1E1E!important;color:#FFF!important}
 /* Icon-only buttons (label moves to title tooltip) */
 body[data-theme] .cn-icon-btn{font-size:0!important;padding:5px 9px!important;line-height:1!important;white-space:nowrap}
@@ -179,7 +180,9 @@ body[data-theme] .ipsStream .ipsStreamItem_stats{font-size:calc(13px * var(--cn-
 body[data-theme] .ipsStream .ipsStreamItem{padding:12px!important;margin:10px 0 10px 28px!important;border:1px solid var(--border-color)!important;background-color:var(--tertiary-bg)!important}
 body[data-theme] .ipsStream .ipsStreamItem:hover{border-color:var(--border-light)!important}
 .ipsStream .ipsStreamItem_container{min-height:0!important}
-body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read){background-color:color-mix(in srgb,var(--tertiary-bg) 80%,var(--primary-bg))!important}
+body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read){background-color:color-mix(in srgb,var(--tertiary-bg) 80%,#000)!important}
+body[data-theme="light"] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read){background-color:color-mix(in srgb,var(--tertiary-bg) 92%,#000)!important}
+body[data-theme="dark-red-astronomy"] .ipsStream .ipsStreamItem:not(:has(.ipsItemStatus_read)){background-color:#1A0000!important}
 body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read) .ipsStreamItem_title a{opacity:.85}
 body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read):hover .ipsStreamItem_title a{opacity:1}
 body[data-theme] .ipsStream .ipsStreamItem_status{font-size:calc(12px * var(--cn-font-scale,1))!important;padding-left:30px!important;margin-top:2px!important;color:var(--text-secondary)!important;opacity:.75}

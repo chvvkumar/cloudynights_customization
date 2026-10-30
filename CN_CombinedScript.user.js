@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar & Theming
 // @namespace    http://tampermonkey.net/
-// @version      8.0
+// @version      8.1
 // @description  Optimized: Dark/Light themes, collapsible sidebar/header. Enhanced performance, smaller size, cleaner code.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
@@ -150,8 +150,36 @@ body[data-theme] blockquote{background-color:var(--tertiary-bg)!important;border
 .cn-sidebar-collapsed #ipsLayout_sidebar{width:0!important;min-width:0!important;margin:0!important;padding:0!important;display:none!important}
 .cn-sidebar-collapsed #ipsLayout_mainArea{width:100%!important;max-width:100%!important;flex:1 1 100%!important;margin-right:0!important;padding-right:0!important;display:block!important}
 #cn-theme-selector-li button select{-webkit-appearance:none;-moz-appearance:none;appearance:none;background:transparent!important;border:none!important;color:transparent!important;position:absolute;top:0;left:0;width:100%;height:100%;padding:0;margin:0;cursor:pointer;z-index:2}
-#cn-theme-selector-li button{position:relative;display:flex;align-items:center;padding:6px 12px!important}
+#cn-theme-selector-li button{position:relative;display:flex;align-items:center;padding:5px 9px!important}
 #cn-theme-selector-li button select optgroup,#cn-theme-selector-li button select option{background-color:#1E1E1E!important;color:#FFF!important}
+/* Icon-only buttons (label moves to title tooltip) */
+body[data-theme] .cn-icon-btn{font-size:0!important;padding:5px 9px!important;line-height:1!important;white-space:nowrap}
+body[data-theme] .cn-icon-btn i{font-size:13px!important;margin:0!important;line-height:1!important;vertical-align:middle}
+body[data-theme] .cn-icon-btn .fa-caret-down::before{content:"\\f013"}
+#cn-theme-selector-li .ipsResponsive_hidePhone,#cn-sidebar-toggle-li .ipsResponsive_hidePhone{display:none!important}
+/* Stream pages: compact header, one row of grouped buttons */
+body[data-pagecontroller="streams"] .ipsPageHeader{margin-bottom:4px!important}
+body[data-pagecontroller="streams"] .ipsPageHeader h1.ipsType_pageTitle{font-size:16px!important;line-height:1.3!important}
+body[data-pagecontroller="streams"] .ipsPageHeader p.ipsType_normal{font-size:11px!important;margin-top:0!important;opacity:.8}
+body[data-pagecontroller="streams"] .ipsPageHeader>div.ipsPadding_top{padding:6px 12px 0 12px!important}
+body[data-pagecontroller="streams"] .ipsPageHeader .ipsFlex.ipsPadding_bottom{padding-bottom:4px!important}
+.ipsPageHeader ul.ipsList_reset{gap:6px!important}
+.ipsPageHeader ul.ipsList_reset .cn-group-start{margin-left:6px;padding-left:10px;border-left:1px solid var(--border-color)}
+/* Stream cards */
+body[data-theme] .ipsStream .ipsStreamItem{padding:12px!important;margin:10px 0 10px 28px!important;border:1px solid var(--border-color)!important;background-color:var(--tertiary-bg)!important}
+body[data-theme] .ipsStream .ipsStreamItem:hover{border-color:var(--border-light)!important}
+.ipsStream .ipsStreamItem_container{min-height:0!important}
+body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read){background-color:color-mix(in srgb,var(--tertiary-bg) 80%,var(--primary-bg))!important}
+body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read) .ipsStreamItem_title a{opacity:.85}
+body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read):hover .ipsStreamItem_title a{opacity:1}
+body[data-theme] .ipsStream .ipsStreamItem_status{font-size:11px!important;padding-left:30px!important;margin-top:2px!important;color:var(--text-secondary)!important;opacity:.75}
+body[data-theme] .ipsStream .ipsStreamItem_status a{color:inherit!important}
+body[data-theme] .ipsStream .ipsStreamItem_status a:hover{color:var(--accent-primary)!important}
+body[data-theme] .ipsStream .ipsStreamItem:hover .ipsStreamItem_status{opacity:1}
+/* Stream date dividers: label + rule instead of pill */
+body[data-theme] .ipsStream .ipsStreamItem_time{background:none!important;border:none!important;box-shadow:none!important;border-radius:0!important;padding:0 0 0 8px!important;margin:18px 0 6px -20px!important;font-size:11px!important;font-weight:700!important;letter-spacing:.6px;text-transform:uppercase;color:var(--accent-primary)!important;display:flex!important;align-items:center;gap:12px;height:auto!important;line-height:1!important}
+body[data-theme] .ipsStream .ipsStreamItem_time::after{content:"";flex:1;height:1px;background:var(--border-light)}
+body[data-theme] .ipsStream > .ipsStreamItem_time:first-child{margin-top:6px!important}
 `);
 
     // ============================================================================
@@ -166,7 +194,7 @@ body[data-theme] blockquote{background-color:var(--tertiary-bg)!important;border
         li.id = 'cn-theme-selector-li';
 
         const btn = document.createElement('button');
-        btn.className = 'ipsButton ipsButton_light ipsButton_medium';
+        btn.className = 'ipsButton ipsButton_light ipsButton_verySmall cn-icon-btn';
         btn.type = 'button';
 
         const icon = document.createElement('i');
@@ -200,6 +228,7 @@ body[data-theme] blockquote{background-color:var(--tertiary-bg)!important;border
             const cfg = CONFIG.THEMES[theme];
             icon.className = `fa ${cfg.i}`;
             text.textContent = cfg.t;
+            btn.title = `Theme: ${cfg.t}`;
         };
 
         // Assemble
@@ -255,8 +284,10 @@ body[data-theme] blockquote{background-color:var(--tertiary-bg)!important;border
         const content = $('#ipsLayout_contentArea');
         if (!sidebar || !content) return;
 
-        // Find or create toolbar
-        let list = $('.ipsToolList_horizontal') ||
+        // Find or create toolbar. Prefer the native page-header button row
+        // (IPS 4.5+ flex list) so our buttons sit beside Share/Stream Options.
+        let list = $('.ipsPageHeader ul.ipsList_reset.ipsFlex') ||
+                   $('.ipsToolList_horizontal') ||
                    $('.ipsPageHeader .ipsToolList') ||
                    $('.ipsPageHeader + .ipsClearfix .ipsToolList');
 
@@ -283,9 +314,8 @@ body[data-theme] blockquote{background-color:var(--tertiary-bg)!important;border
         li.id = 'cn-sidebar-toggle-li';
 
         const btn = document.createElement('button');
-        btn.className = 'ipsButton ipsButton_important ipsButton_medium';
+        btn.className = 'ipsButton ipsButton_light ipsButton_verySmall cn-icon-btn';
         btn.type = 'button';
-        btn.title = 'Toggle Sidebar';
 
         const icon = document.createElement('i');
         const span = document.createElement('span');
@@ -303,6 +333,7 @@ body[data-theme] blockquote{background-color:var(--tertiary-bg)!important;border
             content.classList.toggle('cn-sidebar-collapsed', collapsed);
             icon.className = `fa ${collapsed ? 'fa-chevron-left' : 'fa-chevron-right'}`;
             span.textContent = ` ${collapsed ? 'Expand' : 'Collapse'} Sidebar`;
+            btn.title = span.textContent.trim();
             storage.set(CONFIG.SIDEBAR_KEY, collapsed);
         };
 
@@ -313,6 +344,36 @@ body[data-theme] blockquote{background-color:var(--tertiary-bg)!important;border
         btn.onclick = () => {
             toggle(!content.classList.contains('cn-sidebar-collapsed'));
         };
+
+        // Native header row (stream pages): order groups as
+        // [stream actions] | [Condensed/Expanded] | [theme, sidebar],
+        // and make every button icon-only with its label as the tooltip.
+        if (list.classList.contains('ipsList_reset')) {
+            const split = $('.ipsBox_alt > .ipsFlex > ul.ipsButton_split');
+            if (split) {
+                const viewLi = document.createElement('li');
+                viewLi.className = 'cn-group-start';
+                viewLi.appendChild(split);
+                list.appendChild(viewLi);
+            }
+            if (themeBtn) {
+                themeBtn.classList.add('cn-group-start');
+                list.appendChild(themeBtn);
+            }
+            list.appendChild(li);
+
+            $$('.ipsButton', list).forEach(b => {
+                if (!b.title) {
+                    const label = Array.from(b.childNodes)
+                        .filter(n => n.nodeType === Node.TEXT_NODE)
+                        .map(n => n.textContent.trim())
+                        .join(' ')
+                        .trim();
+                    if (label) b.title = label;
+                }
+                b.classList.add('cn-icon-btn');
+            });
+        }
     };
 
     // ============================================================================

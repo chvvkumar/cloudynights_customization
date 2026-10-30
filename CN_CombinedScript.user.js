@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar & Theming
 // @namespace    http://tampermonkey.net/
-// @version      8.1
+// @version      8.2
 // @description  Optimized: Dark/Light themes, collapsible sidebar/header. Enhanced performance, smaller size, cleaner code.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*
@@ -20,6 +20,7 @@
         THEME_KEY: 'cnThemeMode',
         SIDEBAR_KEY: 'cnSidebarCollapsed',
         HEADER_KEY: 'cnMainHeaderCollapsed',
+        FONT_KEY: 'cnFontScale',
         DEFAULT_THEME: 'material-gold',
         
         THEMES: {
@@ -68,6 +69,7 @@
         const html = document.documentElement;
         
         html.setAttribute('data-theme', validTheme);
+        html.style.setProperty('--cn-font-scale', storage.get(CONFIG.FONT_KEY, '1'));
 
         if (document.body) {
             document.body.setAttribute('data-theme', validTheme);
@@ -159,25 +161,33 @@ body[data-theme] .cn-icon-btn .fa-caret-down::before{content:"\\f013"}
 #cn-theme-selector-li .ipsResponsive_hidePhone,#cn-sidebar-toggle-li .ipsResponsive_hidePhone{display:none!important}
 /* Stream pages: compact header, one row of grouped buttons */
 body[data-pagecontroller="streams"] .ipsPageHeader{margin-bottom:4px!important}
-body[data-pagecontroller="streams"] .ipsPageHeader h1.ipsType_pageTitle{font-size:16px!important;line-height:1.3!important}
-body[data-pagecontroller="streams"] .ipsPageHeader p.ipsType_normal{font-size:11px!important;margin-top:0!important;opacity:.8}
+body[data-pagecontroller="streams"] .ipsPageHeader h1.ipsType_pageTitle{font-size:calc(18px * var(--cn-font-scale,1))!important;line-height:1.3!important}
+body[data-pagecontroller="streams"] .ipsPageHeader p.ipsType_normal{font-size:calc(12px * var(--cn-font-scale,1))!important;margin-top:0!important;opacity:.8}
 body[data-pagecontroller="streams"] .ipsPageHeader>div.ipsPadding_top{padding:6px 12px 0 12px!important}
 body[data-pagecontroller="streams"] .ipsPageHeader .ipsFlex.ipsPadding_bottom{padding-bottom:4px!important}
 .ipsPageHeader ul.ipsList_reset{gap:6px!important}
 .ipsPageHeader ul.ipsList_reset .cn-group-start{margin-left:6px;padding-left:10px;border-left:1px solid var(--border-color)}
-/* Stream cards */
+/* Stream cards (text scaled by --cn-font-scale, set from the header slider) */
+body[data-theme] .ipsStream .ipsStreamItem_title{font-size:calc(15px * var(--cn-font-scale,1))!important}
+body[data-theme] .ipsStream .ipsStreamItem_stats{font-size:calc(13px * var(--cn-font-scale,1))!important}
+#cn-font-scale-li{position:relative}
+#cn-font-scale-pop{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:1000;flex-direction:column;align-items:center;gap:6px;padding:10px 8px;background:var(--secondary-bg);border:1px solid var(--border-light);border-radius:var(--radius-md);box-shadow:var(--shadow-md)}
+#cn-font-scale-li.cn-open #cn-font-scale-pop{display:flex}
+.ipsPageHeader:has(#cn-font-scale-li.cn-open){position:relative;z-index:1001}
+#cn-font-scale-pop input[type=range]{writing-mode:vertical-lr;direction:rtl;width:16px;height:120px;margin:0;padding:0;accent-color:var(--accent-primary);cursor:pointer;background:transparent}
+#cn-font-scale-pop span{font-size:11px;color:var(--text-secondary);cursor:pointer;user-select:none}
 body[data-theme] .ipsStream .ipsStreamItem{padding:12px!important;margin:10px 0 10px 28px!important;border:1px solid var(--border-color)!important;background-color:var(--tertiary-bg)!important}
 body[data-theme] .ipsStream .ipsStreamItem:hover{border-color:var(--border-light)!important}
 .ipsStream .ipsStreamItem_container{min-height:0!important}
 body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read){background-color:color-mix(in srgb,var(--tertiary-bg) 80%,var(--primary-bg))!important}
 body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read) .ipsStreamItem_title a{opacity:.85}
 body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read):hover .ipsStreamItem_title a{opacity:1}
-body[data-theme] .ipsStream .ipsStreamItem_status{font-size:11px!important;padding-left:30px!important;margin-top:2px!important;color:var(--text-secondary)!important;opacity:.75}
+body[data-theme] .ipsStream .ipsStreamItem_status{font-size:calc(12px * var(--cn-font-scale,1))!important;padding-left:30px!important;margin-top:2px!important;color:var(--text-secondary)!important;opacity:.75}
 body[data-theme] .ipsStream .ipsStreamItem_status a{color:inherit!important}
 body[data-theme] .ipsStream .ipsStreamItem_status a:hover{color:var(--accent-primary)!important}
 body[data-theme] .ipsStream .ipsStreamItem:hover .ipsStreamItem_status{opacity:1}
 /* Stream date dividers: label + rule instead of pill */
-body[data-theme] .ipsStream .ipsStreamItem_time{background:none!important;border:none!important;box-shadow:none!important;border-radius:0!important;padding:0 0 0 8px!important;margin:18px 0 6px -20px!important;font-size:11px!important;font-weight:700!important;letter-spacing:.6px;text-transform:uppercase;color:var(--accent-primary)!important;display:flex!important;align-items:center;gap:12px;height:auto!important;line-height:1!important}
+body[data-theme] .ipsStream .ipsStreamItem_time{background:none!important;border:none!important;box-shadow:none!important;border-radius:0!important;padding:0 0 0 8px!important;margin:18px 0 6px -20px!important;font-size:calc(12px * var(--cn-font-scale,1))!important;font-weight:700!important;letter-spacing:.6px;text-transform:uppercase;color:var(--accent-primary)!important;display:flex!important;align-items:center;gap:12px;height:auto!important;line-height:1!important}
 body[data-theme] .ipsStream .ipsStreamItem_time::after{content:"";flex:1;height:1px;background:var(--border-light)}
 body[data-theme] .ipsStream > .ipsStreamItem_time:first-child{margin-top:6px!important}
 `);
@@ -346,7 +356,7 @@ body[data-theme] .ipsStream > .ipsStreamItem_time:first-child{margin-top:6px!imp
         };
 
         // Native header row (stream pages): order groups as
-        // [stream actions] | [Condensed/Expanded] | [theme, sidebar],
+        // [stream actions] | [Condensed/Expanded] | [text size, theme, sidebar],
         // and make every button icon-only with its label as the tooltip.
         if (list.classList.contains('ipsList_reset')) {
             const split = $('.ipsBox_alt > .ipsFlex > ul.ipsButton_split');
@@ -356,10 +366,45 @@ body[data-theme] .ipsStream > .ipsStreamItem_time:first-child{margin-top:6px!imp
                 viewLi.appendChild(split);
                 list.appendChild(viewLi);
             }
-            if (themeBtn) {
-                themeBtn.classList.add('cn-group-start');
-                list.appendChild(themeBtn);
-            }
+            // Text size button: click opens a vertical slider popover below it.
+            // Slider drives --cn-font-scale, remembered in storage.
+            const fontLi = document.createElement('li');
+            fontLi.id = 'cn-font-scale-li';
+            fontLi.className = 'cn-group-start';
+            const fontBtn = document.createElement('button');
+            fontBtn.className = 'ipsButton ipsButton_light ipsButton_verySmall cn-icon-btn';
+            fontBtn.type = 'button';
+            fontBtn.innerHTML = '<i class="fa fa-text-height"></i>';
+            const fontPop = document.createElement('div');
+            fontPop.id = 'cn-font-scale-pop';
+            const fontRange = document.createElement('input');
+            fontRange.type = 'range';
+            fontRange.min = '0.8';
+            fontRange.max = '1.5';
+            fontRange.step = '0.05';
+            fontRange.value = storage.get(CONFIG.FONT_KEY, '1');
+            const fontLabel = document.createElement('span');
+            const applyScale = (v) => {
+                document.documentElement.style.setProperty('--cn-font-scale', v);
+                fontLabel.textContent = `${Math.round(v * 100)}%`;
+                fontBtn.title = `Text size ${fontLabel.textContent}`;
+            };
+            fontRange.oninput = () => applyScale(fontRange.value);
+            fontRange.onchange = () => storage.set(CONFIG.FONT_KEY, fontRange.value);
+            fontLabel.title = 'Reset to 100%';
+            fontLabel.onclick = () => { fontRange.value = '1'; applyScale('1'); storage.set(CONFIG.FONT_KEY, '1'); };
+            applyScale(fontRange.value);
+            fontPop.append(fontRange, fontLabel);
+            fontLi.append(fontBtn, fontPop);
+            list.appendChild(fontLi);
+
+            const closeFontPop = () => fontLi.classList.remove('cn-open');
+            fontBtn.onclick = (e) => { e.stopPropagation(); fontLi.classList.toggle('cn-open'); };
+            fontPop.onclick = (e) => e.stopPropagation();
+            document.addEventListener('click', closeFontPop);
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFontPop(); });
+
+            if (themeBtn) list.appendChild(themeBtn);
             list.appendChild(li);
 
             $$('.ipsButton', list).forEach(b => {

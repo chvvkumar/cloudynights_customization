@@ -1,7 +1,9 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar & Theming
 // @namespace    http://tampermonkey.net/
-// @version      8.3
+// @version      8.4
+// @updateURL    https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/CN_CombinedScript.user.js
+// @downloadURL  https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/CN_CombinedScript.user.js
 // @description  Optimized: Dark/Light themes, collapsible sidebar/header. Enhanced performance, smaller size, cleaner code.
 // @author       chvvkumar
 // @match        *://www.cloudynights.com/*

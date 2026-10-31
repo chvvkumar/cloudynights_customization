@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar & Theming
 // @namespace    http://tampermonkey.net/
-// @version      8.4
+// @version      8.5
 // @updateURL    https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/CN_CombinedScript.user.js
 // @downloadURL  https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/CN_CombinedScript.user.js
 // @description  Optimized: Dark/Light themes, collapsible sidebar/header. Enhanced performance, smaller size, cleaner code.
@@ -170,6 +170,20 @@ body[data-pagecontroller="streams"] .ipsPageHeader>div.ipsPadding_top{padding:6p
 body[data-pagecontroller="streams"] .ipsPageHeader .ipsFlex.ipsPadding_bottom{padding-bottom:4px!important}
 .ipsPageHeader ul.ipsList_reset{gap:6px!important}
 .ipsPageHeader ul.ipsList_reset .cn-group-start{margin-left:6px;padding-left:10px;border-left:1px solid var(--border-color)}
+/* Forum and topic pages: flex toolbar with the chrome group last, compact header, scaled topic rows */
+body[data-theme] .cn-chrome{display:flex!important;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px}
+body[data-theme] .cn-chrome>li{float:none!important;margin:0!important}
+body[data-theme] .cn-chrome .cn-group-start{margin-left:6px!important;padding-left:10px;border-left:1px solid var(--border-color)}
+body[data-theme] .ipsDataItem_title{font-size:calc(16px * var(--cn-font-scale,1))!important}
+body[data-theme] .ipsDataItem_meta,body[data-theme] .ipsDataItem_stats{font-size:calc(13px * var(--cn-font-scale,1))!important}
+body[data-pagecontroller="forums"] .ipsPageHeader{margin-bottom:6px!important}
+body[data-pagecontroller="forums"] .ipsPageHeader h1.ipsType_pageTitle{font-size:calc(18px * var(--cn-font-scale,1))!important;line-height:1.3!important}
+body[data-pagecontroller="forums"] .ipsPageHeader .ipsType_normal{font-size:calc(12px * var(--cn-font-scale,1))!important;opacity:.85}
+body[data-pagecontroller="forums"] .ipsToolList_horizontal.ipsSpacer_both{margin:6px 0!important}
+/* Follow button: centre the label with its count badge */
+body[data-theme] .ipsFollow.ipsButton{display:inline-flex!important;align-items:center!important;padding:3px 4px 3px 12px!important;line-height:24px!important}
+body[data-theme] .ipsFollow.ipsButton>a.ipsType_blendLinks{line-height:24px!important;padding:0 10px 0 0!important}
+body[data-theme] .ipsFollow.ipsButton>a.ipsCommentCount{line-height:24px!important}
 /* Stream cards (text scaled by --cn-font-scale, set from the header slider) */
 body[data-theme] .ipsStream .ipsStreamItem_title{font-size:calc(15px * var(--cn-font-scale,1))!important}
 body[data-theme] .ipsStream .ipsStreamItem_stats{font-size:calc(13px * var(--cn-font-scale,1))!important}
@@ -360,10 +374,13 @@ body[data-theme] .ipsStream > .ipsStreamItem_time:first-child{margin-top:6px!imp
             toggle(!content.classList.contains('cn-sidebar-collapsed'));
         };
 
-        // Native header row (stream pages): order groups as
-        // [stream actions] | [Condensed/Expanded] | [text size, theme, sidebar],
-        // and make every button icon-only with its label as the tooltip.
-        if (list.classList.contains('ipsList_reset')) {
+        // Toolbar layout. Order groups as
+        // [page actions] | [view toggles] | [text size, theme, sidebar].
+        // On stream pages the native header row (ul.ipsList_reset) is used and
+        // every button goes icon-only; on forum/topic pages the float-based
+        // ipsToolList is switched to flex and native buttons keep their labels.
+        const isStreamHeader = list.classList.contains('ipsList_reset');
+        if (isStreamHeader) {
             const split = $('.ipsBox_alt > .ipsFlex > ul.ipsButton_split');
             if (split) {
                 const viewLi = document.createElement('li');
@@ -371,6 +388,10 @@ body[data-theme] .ipsStream > .ipsStreamItem_time:first-child{margin-top:6px!imp
                 viewLi.appendChild(split);
                 list.appendChild(viewLi);
             }
+        } else {
+            list.classList.add('cn-chrome');
+        }
+        {
             // Text size button: click opens a vertical slider popover below it.
             // Slider drives --cn-font-scale, remembered in storage.
             const fontLi = document.createElement('li');
@@ -411,7 +432,9 @@ body[data-theme] .ipsStream > .ipsStreamItem_time:first-child{margin-top:6px!imp
 
             if (themeBtn) list.appendChild(themeBtn);
             list.appendChild(li);
+        }
 
+        if (isStreamHeader) {
             $$('.ipsButton', list).forEach(b => {
                 if (!b.title) {
                     const label = Array.from(b.childNodes)

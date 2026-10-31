@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar & Theming
 // @namespace    http://tampermonkey.net/
-// @version      8.6
+// @version      8.7
 // @updateURL    https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/CN_CombinedScript.user.js
 // @downloadURL  https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/CN_CombinedScript.user.js
 // @description  Optimized: Dark/Light themes, collapsible sidebar/header. Enhanced performance, smaller size, cleaner code.
@@ -184,6 +184,18 @@ body[data-pagecontroller="forums"] .ipsToolList_horizontal.ipsSpacer_both{margin
 body[data-theme] .ipsFollow.ipsButton{display:inline-flex!important;align-items:center!important;padding:3px 4px 3px 12px!important;line-height:24px!important}
 body[data-theme] .ipsFollow.ipsButton>a.ipsType_blendLinks{line-height:24px!important;padding:0 10px 0 0!important}
 body[data-theme] .ipsFollow.ipsButton>a.ipsCommentCount{line-height:24px!important}
+/* Site-wide text scale: body inheritance plus the IPS type classes, post bodies and page titles.
+   Nav bar, buttons and icon buttons stay fixed so the chrome does not grow with the text. */
+body[data-theme]{font-size:calc(13px * var(--cn-font-scale,1))!important}
+body[data-theme] #ipsLayout_header{font-size:13px!important}
+body[data-theme] .ipsType_small{font-size:calc(12px * var(--cn-font-scale,1))!important}
+body[data-theme] .ipsType_medium{font-size:calc(13px * var(--cn-font-scale,1))!important}
+body[data-theme] .ipsType_normal{font-size:calc(15px * var(--cn-font-scale,1))!important}
+body[data-theme] .ipsType_large{font-size:calc(16px * var(--cn-font-scale,1))!important}
+body[data-theme] .cPost .ipsType_richText{font-size:calc(15px * var(--cn-font-scale,1))!important}
+body[data-theme] .ipsPageHeader h1.ipsType_pageTitle{font-size:calc(18px * var(--cn-font-scale,1))!important;line-height:1.3!important}
+body[data-theme] .ipsButton{font-size:13px!important}
+body[data-theme] .cn-icon-btn{font-size:0!important}
 /* Stream cards (text scaled by --cn-font-scale, set from the header slider) */
 body[data-theme] .ipsStream .ipsStreamItem_title{font-size:calc(15px * var(--cn-font-scale,1))!important}
 body[data-theme] .ipsStream .ipsStreamItem_stats{font-size:calc(13px * var(--cn-font-scale,1))!important}

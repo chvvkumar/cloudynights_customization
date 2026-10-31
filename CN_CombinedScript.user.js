@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cloudy Nights Collapsible Sidebar & Theming
 // @namespace    http://tampermonkey.net/
-// @version      8.5
+// @version      8.6
 // @updateURL    https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/CN_CombinedScript.user.js
 // @downloadURL  https://raw.githubusercontent.com/chvvkumar/cloudynights_customization/main/CN_CombinedScript.user.js
 // @description  Optimized: Dark/Light themes, collapsible sidebar/header. Enhanced performance, smaller size, cleaner code.
@@ -203,6 +203,7 @@ body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read) .ipsStreamIt
 body[data-theme] .ipsStream .ipsStreamItem:has(.ipsItemStatus_read):hover .ipsStreamItem_title a{opacity:1}
 body[data-theme] .ipsStream .ipsStreamItem_status{font-size:calc(12px * var(--cn-font-scale,1))!important;padding-left:30px!important;margin-top:2px!important;color:var(--text-secondary)!important;opacity:.75}
 body[data-theme] .ipsStream .ipsStreamItem_status a{color:inherit!important}
+body[data-theme] .ipsStream .ipsStreamItem_status a[href*="/forums/forum/"]{color:color-mix(in srgb,var(--accent-primary) 60%,var(--text-secondary))!important}
 body[data-theme] .ipsStream .ipsStreamItem_status a:hover{color:var(--accent-primary)!important}
 body[data-theme] .ipsStream .ipsStreamItem:hover .ipsStreamItem_status{opacity:1}
 /* Stream date dividers: label + rule instead of pill */

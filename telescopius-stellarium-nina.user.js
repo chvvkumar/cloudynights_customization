@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Telescopius to Stellarium & NINA
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Adds Stellarium and NINA send buttons to Telescopius target pages and observing lists.
 // @author       Dev
 // @match        https://telescopius.com/*
@@ -47,8 +47,8 @@
         .tl-cog svg { width: 13px; height: 13px; fill: currentColor; }
         .tl-cog-float { position: fixed; right: 14px; bottom: 14px; z-index: 99999; background: #1e1e2e; border: 1px solid ${CLR.border}; border-radius: 50%; padding: 8px; }
         /* List rows: compact pills in the card footer; "add notes" must never shrink. */
-        .tl-list-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; flex: 1 1 auto; min-width: 0; }
-        .tl-list-row .tl-row { display: contents; }
+        .tl-list-row { display: flex; flex-direction: column; gap: 4px; flex: 1 1 auto; min-width: 0; }
+        .tl-list-row .tl-row { gap: 4px; }
         .tl-list-row .tl-entry { padding: 2px 5px; gap: 3px; }
         .tl-list-row .tl-icon { width: 13px; height: 13px; }
         .tl-list-row .tl-name { font-size: 10px; }
@@ -220,30 +220,23 @@
     // --- UI BUILDERS ---
     // --------------------------------------------------------------------------------
 
-    // Row of send buttons: Stellarium (coords) + one per enabled NINA host.
-    function buildSendRow(getCoords) {
-        const row = createEl('div', 'tl-row');
-        const stel = mkEntry(ICON_SRC, 'Stellarium', 'Center coordinates in Stellarium');
-        stel.onclick = stopAndRun(() => { const c = getCoords(); if (valid(c)) sendStellariumCoords(c, stel); });
-        row.appendChild(stel);
-        activeHosts().forEach(host => {
-            const e = mkEntry(NINA_ICON_SRC, host.name, `Send to ${host.name}`);
-            e.onclick = stopAndRun(() => { const c = getCoords(); if (valid(c)) sendNina(host.url, c, e); });
-            row.appendChild(e);
-        });
-        return row;
-    }
-
-    // Row of "focus by name" Stellarium buttons.
-    function buildNameRow(names) {
-        const row = createEl('div', 'tl-row');
-        names.forEach(n => {
-            const e = mkEntry(ICON_SRC, n, `Focus in Stellarium: ${n}`);
-            e.onclick = stopAndRun(() => sendStellariumName(n, e));
-            row.appendChild(e);
-        });
-        return row;
-    }
+    // Button factories. Each returns ready-to-append entries; callers compose rows.
+    const mkStelCoordsBtn = (getCoords) => {
+        const e = mkEntry(ICON_SRC, 'Stellarium', 'Center coordinates in Stellarium');
+        e.onclick = stopAndRun(() => { const c = getCoords(); if (valid(c)) sendStellariumCoords(c, e); });
+        return e;
+    };
+    const mkNinaBtns = (getCoords) => activeHosts().map(host => {
+        const e = mkEntry(NINA_ICON_SRC, host.name, `Send to ${host.name}`);
+        e.onclick = stopAndRun(() => { const c = getCoords(); if (valid(c)) sendNina(host.url, c, e); });
+        return e;
+    });
+    const mkNameBtns = (names) => names.map(n => {
+        const e = mkEntry(ICON_SRC, n, `Focus in Stellarium: ${n}`);
+        e.onclick = stopAndRun(() => sendStellariumName(n, e));
+        return e;
+    });
+    const mkRow = (...entries) => { const row = createEl('div', 'tl-row'); row.append(...entries); return row; };
 
     // --------------------------------------------------------------------------------
     // --- INJECTION ---
@@ -268,8 +261,9 @@
         const section = createEl('div', 'tl-section');
         const header = createEl('div', 'tl-header');
         header.append(createEl('span', 'tl-title', 'Send coordinates to:'), mkCog('tl-cog'));
-        section.append(header, buildSendRow(() => readTargetPage(page)));
-        if (c.names.length) section.append(createEl('div', 'tl-label', 'Focus in Stellarium:'), buildNameRow(c.names));
+        const get = () => readTargetPage(page);
+        section.append(header, mkRow(mkStelCoordsBtn(get), ...mkNinaBtns(get)));
+        if (c.names.length) section.append(createEl('div', 'tl-label', 'Focus in Stellarium:'), mkRow(...mkNameBtns(c.names)));
         anchor.insertAdjacentElement(stelBtn ? 'afterend' : 'beforebegin', section);
         log('Injected target page UI', c);
     }
@@ -293,9 +287,12 @@
             const c = readListRow(row);
             if (!valid(c)) return;
             adopt(rsr);
+            // Row 1: NINA hosts. Row 2: Stellarium coords + focus-by-name.
+            const get = () => readListRow(row);
             const wrap = createEl('div', 'tl-list-row');
-            wrap.appendChild(buildSendRow(() => readListRow(row)));
-            if (c.names[0]) wrap.appendChild(buildNameRow(c.names));
+            const nina = mkNinaBtns(get);
+            if (nina.length) wrap.appendChild(mkRow(...nina));
+            wrap.appendChild(mkRow(mkStelCoordsBtn(get), ...mkNameBtns(c.names)));
             footer.insertBefore(wrap, footer.firstChild);
         });
     }

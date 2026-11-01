@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Telescopius to Stellarium & NINA
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Adds Stellarium and NINA send buttons to Telescopius target pages and observing lists.
 // @author       Dev
 // @match        https://telescopius.com/*
@@ -46,8 +46,13 @@
         .tl-cog:hover { opacity: 1; color: ${CLR.blue}; }
         .tl-cog svg { width: 13px; height: 13px; fill: currentColor; }
         .tl-cog-float { position: fixed; right: 14px; bottom: 14px; z-index: 99999; background: #1e1e2e; border: 1px solid ${CLR.border}; border-radius: 50%; padding: 8px; }
-        .tl-list-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex: 1 1 auto; }
+        /* List rows: compact pills in the card footer; "add notes" must never shrink. */
+        .tl-list-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; flex: 1 1 auto; min-width: 0; }
         .tl-list-row .tl-row { display: contents; }
+        .tl-list-row .tl-entry { padding: 2px 5px; gap: 3px; }
+        .tl-list-row .tl-icon { width: 13px; height: 13px; }
+        .tl-list-row .tl-name { font-size: 10px; }
+        #footer #notes { flex-shrink: 0; white-space: nowrap; margin-left: 8px; }
 
         .tl-cfg-ol { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 999999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
         .tl-cfg-win { background: #1e1e2e; color: ${CLR.text}; border-radius: 12px; padding: 24px; min-width: 420px; font-family: system-ui, sans-serif; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #313244; }

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Telescopius to Stellarium & NINA
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Adds Stellarium and NINA send buttons to Telescopius target pages and observing lists.
 // @author       Dev
 // @match        https://telescopius.com/*
@@ -53,6 +53,8 @@
         .tl-list-row .tl-icon { width: 13px; height: 13px; }
         .tl-list-row .tl-name { font-size: 10px; }
         #footer #notes { flex-shrink: 0; white-space: nowrap; margin-left: 8px; }
+        /* Search results: full-width strip under the card (host is already flex-wrap: wrap). */
+        .tl-search-row { flex: 1 1 100%; margin-top: 6px; }
 
         .tl-cfg-ol { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 999999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
         .tl-cfg-win { background: #1e1e2e; color: ${CLR.text}; border-radius: 12px; padding: 24px; min-width: 420px; font-family: system-ui, sans-serif; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #313244; }
@@ -238,6 +240,15 @@
     });
     const mkRow = (...entries) => { const row = createEl('div', 'tl-row'); row.append(...entries); return row; };
 
+    // Compact two-row block for cards: row 1 NINA hosts, row 2 Stellarium coords + focus-by-name.
+    function buildCardRows(getCoords, names, extraClass = '') {
+        const wrap = createEl('div', `tl-list-row ${extraClass}`.trim());
+        const nina = mkNinaBtns(getCoords);
+        if (nina.length) wrap.appendChild(mkRow(...nina));
+        wrap.appendChild(mkRow(mkStelCoordsBtn(getCoords), ...mkNameBtns(names)));
+        return wrap;
+    }
+
     // --------------------------------------------------------------------------------
     // --- INJECTION ---
     // --------------------------------------------------------------------------------
@@ -245,7 +256,7 @@
     // Resolve the active page element inside dso-app > tlc-router shadow roots.
     const findPage = () => document.querySelector('dso-app')?.shadowRoot
         ?.querySelector('tlc-router')?.shadowRoot
-        ?.querySelector('tlc-page-deep-sky-object, tlc-page-observing-list');
+        ?.querySelector('tlc-page-deep-sky-object, tlc-page-observing-list, tlc-page-deep-sky-objects');
 
     function injectTargetPage(page) {
         const sr = page.shadowRoot;
@@ -287,21 +298,33 @@
             const c = readListRow(row);
             if (!valid(c)) return;
             adopt(rsr);
-            // Row 1: NINA hosts. Row 2: Stellarium coords + focus-by-name.
-            const get = () => readListRow(row);
-            const wrap = createEl('div', 'tl-list-row');
-            const nina = mkNinaBtns(get);
-            if (nina.length) wrap.appendChild(mkRow(...nina));
-            wrap.appendChild(mkRow(mkStelCoordsBtn(get), ...mkNameBtns(c.names)));
-            footer.insertBefore(wrap, footer.firstChild);
+            footer.insertBefore(buildCardRows(() => readListRow(row), c.names), footer.firstChild);
+        });
+    }
+
+    // /deep-sky-objects search results: tlc-search-result-dso-teaser carries the same
+    // dso object as the target page, so readTargetPage() reads it directly.
+    function injectSearchPage(page) {
+        const sr = page.shadowRoot;
+        if (!sr) return;
+        sr.querySelectorAll('tlc-search-result-dso-teaser').forEach(row => {
+            const rsr = row.shadowRoot;
+            if (!rsr || rsr.querySelector('.tl-list-row')) return;
+            const c = readTargetPage(row);
+            if (!valid(c)) return;
+            adopt(rsr);
+            rsr.appendChild(buildCardRows(() => readTargetPage(row), c.names, 'tl-search-row'));
         });
     }
 
     function scan() {
         const page = findPage();
         if (!page) return;
-        if (page.tagName === 'TLC-PAGE-DEEP-SKY-OBJECT') injectTargetPage(page);
-        else injectListPage(page);
+        switch (page.tagName) {
+            case 'TLC-PAGE-DEEP-SKY-OBJECT': injectTargetPage(page); break;
+            case 'TLC-PAGE-DEEP-SKY-OBJECTS': injectSearchPage(page); break;
+            default: injectListPage(page);
+        }
     }
 
     // --------------------------------------------------------------------------------

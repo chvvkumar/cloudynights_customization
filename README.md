@@ -13,7 +13,8 @@ Adds "send coordinates" buttons to AstroBin image pages. Reads the plate-solved 
 Same buttons for Telescopius.
 
 - Target pages (`/deep-sky-objects/...`): a "Send coordinates to" block under the native "Open in Stellarium" button, plus "Focus in Stellarium" buttons for each catalog name.
-- Observing lists (`/observing-lists/<id>`): a button row in the footer of every target card, left of "add notes". Rows render lazily, so buttons appear as you scroll.
+- Observing lists (`/observing-lists/<id>`): two button rows in the footer of every target card, left of "add notes": N.I.N.A. hosts, then Stellarium. Rows render lazily, so buttons appear as you scroll.
+- Search results (`/deep-sky-objects`): the same two rows as a strip under each result card.
 - Settings cog (next to the buttons on target pages, next to the epoch toggle on lists): Stellarium URL and up to three N.I.N.A. instances. Saving reloads the page.
 
 Coordinates are read from the Polymer element properties (J2000, RA converted from hours to degrees). Camera position angle on list targets, when set, is sent to N.I.N.A. as rotation. Telescopius renders in nested shadow roots, so the script polls once per second instead of using a MutationObserver.
